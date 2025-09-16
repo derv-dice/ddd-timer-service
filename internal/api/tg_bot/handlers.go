@@ -1,0 +1,109 @@
+package tg_bot
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/go-telegram/bot"
+	botmodels "github.com/go-telegram/bot/models"
+)
+
+func (i *implTelegramBot) startHandler(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		Text:      fmt.Sprintf("Привет, *%s*", bot.EscapeMarkdown(update.Message.From.FirstName)),
+		ParseMode: botmodels.ParseModeMarkdown,
+	})
+
+	if !i.service.CheckUserHasServiceDates(ctx, update.Message.From.ID) {
+		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:    update.Message.Chat.ID,
+			Text:      mustRegisterMessage,
+			ParseMode: botmodels.ParseModeMarkdownV1,
+		})
+	}
+}
+
+func (i *implTelegramBot) defaultHandler(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
+	// Более простая проверка, чем на каждое сообщени вызывать regexp
+	if len(update.Message.Text) == regStrLen {
+		if datesRegex.MatchString(update.Message.Text) {
+			dates := strings.Split(update.Message.Text, " ")
+
+			if err := i.service.SetUserDatesFromStringMessage(ctx, update.Message.Chat.ID, dates[0], dates[1]); err != nil {
+				_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+					ChatID: update.Message.Chat.ID,
+					Text:   fmt.Sprintf("Не удалось сохранить даты, ошибка: %s", err.Error()),
+				})
+
+				return
+			}
+
+			_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.Message.Chat.ID,
+				Text:   "Даты начала и окончания службы изменены",
+			})
+		}
+	}
+
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		Text:      "Чтобы узнать статистику используй команду /stats",
+		ParseMode: botmodels.ParseModeMarkdown,
+	})
+}
+
+func (i *implTelegramBot) statsHandler(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
+	s, err := i.service.GetUserStats(ctx, update.Message.Chat.ID)
+	if err != nil {
+		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   fmt.Sprintf("Ошибка: %s", err.Error()),
+		})
+
+		return
+	}
+
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   s.PrettyShort(),
+	})
+}
+
+func (i *implTelegramBot) getUserInfo(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
+	user, err := i.service.GetUser(ctx, update.Message.Chat.ID)
+	if err != nil {
+		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   fmt.Sprintf("Ошибка: %s", err.Error()),
+		})
+
+		return
+	}
+
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   user.String(),
+	})
+}
+
+func (i *implTelegramBot) helpHandler(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		Text:      helpMessage1,
+		ParseMode: botmodels.ParseModeMarkdown,
+	})
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   helpMessage,
+	})
+}
+
+func (i *implTelegramBot) errorsHandler(err error) {
+	i.service.Logger().Err(err).Msg("TGBOT errorsHandler")
+}
+
+func (i *implTelegramBot) debugHandler(format string, args ...any) {
+	i.service.Logger().Debug().Str("debug_msg", fmt.Sprintf(format, args...)).Msg("TGBOT debugHandler")
+}
