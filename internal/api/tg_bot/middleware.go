@@ -49,10 +49,14 @@ func (i *implTelegramBot) checkUserHasDatesMiddleware(next bot.HandlerFunc) bot.
 func (i *implTelegramBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
 		if update.Message != nil {
-			i.service.Logger().Info().Int64("from", update.Message.From.ID).
-				Str("msg", update.Message.Text).Msg("TGBOT Request")
+			i.service.Logger().Info().
+				Int64("from", update.Message.From.ID).
+				Str("msg", update.Message.Text).
+				Msg("TGBOT Request")
 		} else {
-			i.service.Logger().Info().Int64("from", 0).Str("msg", update.Message.Text).
+			i.service.Logger().Warn().
+				Int64("from", 0).
+				Str("msg", "nil").
 				Msg("TGBOT Request")
 		}
 
