@@ -1,0 +1,31 @@
+FROM golang:1.25.0 AS builder
+
+RUN mkdir repository
+
+COPY . /repository
+
+WORKDIR /repository
+
+RUN go build -o ddd-timer-service main.go
+
+FROM alpine:latest AS deploy
+
+RUN apk add --no-cache openssh-client
+
+WORKDIR /app
+
+COPY --from=builder /repository/ddd-timer-service .
+COPY --from=builder /repository/.secret/config/config.json .
+COPY --from=builder /repository/.deploy/ddd-timer.service .
+
+COPY --from=builder /repository/.secret/ssh/ /root/.ssh/
+RUN chmod 600 /root/.ssh/id_rsa && chmod 600 /root/.ssh/id_rsa.pub
+RUN ssh-keyscan -H 193.178.169.195 >> ~/.ssh/known_hosts
+
+RUN scp ddd-timer-service vpn_server:/services/ddd-timer/server
+RUN scp config.json vpn_server:/services/ddd-timer/config.json
+
+RUN scp ddd-timer.service vpn_server:/etc/systemd/system/ddd-timer.service
+RUN ssh vpn_server "systemctl daemon-reload"
+RUN ssh vpn_server "systemctl restart ddd-timer.service"
+

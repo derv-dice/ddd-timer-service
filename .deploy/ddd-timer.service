@@ -1,0 +1,10 @@
+[Unit]
+Description=ddd timer service
+
+[Service]
+ExecStart=/services/ddd-timer/server
+WorkingDirectory=/services/ddd-timer/
+Restart=on-failure
+RestartSec=5
+
+[Install]
