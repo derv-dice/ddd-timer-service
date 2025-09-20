@@ -4,6 +4,7 @@ import (
 	"ddd-timer-service/models"
 	"encoding/json"
 	"fmt"
+	"math"
 	"time"
 )
 
@@ -37,6 +38,10 @@ func NewStats(u *models.User, now time.Time) (*Stats, error) {
 	}
 
 	return ss, nil
+}
+
+func (s *Stats) TotalDays() int {
+	return int(math.Floor(s.PassedDays()) + math.Ceil(s.LeftDays()))
 }
 
 func (s *Stats) LeftHours() float64 {
