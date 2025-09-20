@@ -1,0 +1,13 @@
+FROM alpine:latest AS dowloader
+
+RUN apk add --no-cache openssh-client
+
+COPY .secret/ssh/ /root/.ssh/
+RUN chmod 600 /root/.ssh/id_rsa && chmod 600 /root/.ssh/id_rsa.pub
+RUN ssh-keyscan -H 193.178.169.195 >> ~/.ssh/known_hosts
+
+RUN scp vpn_server:/services/ddd-timer/db.sqlite db.sqlite
+
+FROM alpine:latest AS copier
+
+COPY --from=dowloader /db.sqlite .
