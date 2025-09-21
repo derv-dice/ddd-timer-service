@@ -22,7 +22,9 @@ COPY --from=builder /repository/.secret/ssh/ /root/.ssh/
 RUN chmod 600 /root/.ssh/id_rsa && chmod 600 /root/.ssh/id_rsa.pub
 RUN ssh-keyscan -H 193.178.169.195 >> ~/.ssh/known_hosts
 
-RUN scp ddd-timer-service vpn_server:/services/ddd-timer/server
+RUN scp ddd-timer-service vpn_server:/services/ddd-timer/server_tmp
+RUN ssh vpn_server "mv /services/ddd-timer/server_tmp /services/ddd-timer/server"
+
 RUN scp config.json vpn_server:/services/ddd-timer/config.json
 
 RUN scp ddd-timer.service vpn_server:/etc/systemd/system/ddd-timer.service
