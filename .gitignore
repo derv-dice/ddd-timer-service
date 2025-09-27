@@ -4,5 +4,7 @@
 .ssh/
 .secret/
 
+**/tmp/
+
 config.json
 db.sqlite

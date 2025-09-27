@@ -1,20 +1,47 @@
 package calendar_drawer
 
-import "time"
+import (
+	_ "embed"
+	"time"
 
-var WeekNames = []string{"Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"}
+	"golang.org/x/image/font"
+	"golang.org/x/image/font/opentype"
+)
 
-var WeekDayToNameShort = map[time.Weekday]string{
-	time.Monday:    WeekNames[0],
-	time.Tuesday:   WeekNames[1],
-	time.Wednesday: WeekNames[2],
-	time.Thursday:  WeekNames[3],
-	time.Friday:    WeekNames[4],
-	time.Saturday:  WeekNames[5],
-	time.Sunday:    WeekNames[6],
+//go:embed src/consolas.ttf
+var consolasTTF []byte
+
+func consolasFace(size float64) font.Face {
+	parsedFont, err := opentype.Parse(consolasTTF)
+	if err != nil {
+		panic(err)
+	}
+
+	face, err := opentype.NewFace(parsedFont, &opentype.FaceOptions{
+		Size:    size,
+		DPI:     72,
+		Hinting: font.HintingFull,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	return face
 }
 
-var MonthToName = map[time.Month]string{
+var weekNames = []string{"Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"}
+
+var weekDayToNameShort = map[time.Weekday]string{
+	time.Monday:    weekNames[0],
+	time.Tuesday:   weekNames[1],
+	time.Wednesday: weekNames[2],
+	time.Thursday:  weekNames[3],
+	time.Friday:    weekNames[4],
+	time.Saturday:  weekNames[5],
+	time.Sunday:    weekNames[6],
+}
+
+var monthToName = map[time.Month]string{
 	time.January:   "Январь",
 	time.February:  "Февраль",
 	time.March:     "Март",
@@ -29,30 +56,29 @@ var MonthToName = map[time.Month]string{
 	time.December:  "Декабрь",
 }
 
-type Calendar struct {
-	Years []*Year
+const (
+	Spring yearSeasonType = iota + 10
+	Summer
+	Autumn
+	Winter
+)
+
+var seasonTypeToName = map[yearSeasonType]string{
+	Spring: "Весна",
+	Summer: "Лето",
+	Autumn: "Осень",
+	Winter: "Зима",
 }
 
-type Year struct {
-	Num    int
-	Months [12]*Month
-}
+const (
+	monthPNGHeight     = 420
+	monthPNGWidth      = 500
+	seasonsTitleHeight = 70
+)
 
-type Month struct {
-	Year  int
-	Num   time.Month
-	Weeks []*Week
-}
-
-type Week [7]*Day // starts from monday
-
-type Day struct {
-	Num        int
-	WeekdayNum int
-	IsDayOff   bool
-}
-
-func emptyWeek() *Week {
-	w := Week([7]*Day{nil, nil, nil, nil, nil, nil, nil})
-	return &w
-}
+const (
+	fontMaskShort     = " N"
+	fontMaskLong      = "NN"
+	fontMaskHighlight = "__"
+	fontMaskNone      = "  "
+)

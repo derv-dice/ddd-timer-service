@@ -16,9 +16,9 @@ const (
 )
 
 var (
-	whiteColor = color.RGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
-	greyColor  = color.RGBA{R: 0x29, G: 0x29, B: 0x29, A: 0xff}
-	greenColor = color.RGBA{R: 0x95, G: 0xd1, B: 0xa9, A: 0xff}
+	WhiteColor = color.RGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
+	GreyColor  = color.RGBA{R: 0x29, G: 0x29, B: 0x29, A: 0xff}
+	GreenColor = color.RGBA{R: 0x95, G: 0xd1, B: 0xa9, A: 0xff}
 )
 
 type CellsDrawer struct {
@@ -73,9 +73,9 @@ func drawRowOfSquares(img *image.RGBA, offsetY, rowLen, fillGreenTo int) {
 
 	for xi := 0; xi < rowLen; xi++ {
 		if x < fillGreenTo*cellSize {
-			drawSquare(img, x, y, 22, greenColor, greyColor, 1)
+			drawSquare(img, x, y, 22, GreenColor, GreyColor, 1)
 		} else {
-			drawSquare(img, x, y, 22, whiteColor, greyColor, 1)
+			drawSquare(img, x, y, 22, WhiteColor, GreyColor, 1)
 		}
 
 		x += cellSize

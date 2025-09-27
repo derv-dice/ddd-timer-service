@@ -7,23 +7,22 @@ import (
 
 func Test_generateMonth(t *testing.T) {
 
-	m := generateMonth(2025, 11)
+	m := NewMonth(2025, 9)
+	fmt.Println(m)
+}
 
-	fmt.Printf("%s\n", MonthToName[m.Num])
+func Test_generateCalendar(t *testing.T) {
 
-	for _, name := range WeekNames {
-		fmt.Printf("%s ", name)
-	}
-	fmt.Println()
+	c := NewCalendar(testDate1, testDate2)
+	fmt.Println(c)
+}
 
-	for _, w := range m.Weeks {
-		for _, d := range w {
-			if d == nil {
-				fmt.Printf("   ")
-			} else {
-				fmt.Printf("%2d ", d.Num)
-			}
-		}
-		fmt.Println()
+func Test_MonthStrings(t *testing.T) {
+	m := NewMonth(2025, 9)
+
+	ss := m.strings()
+
+	for i, s := range ss {
+		fmt.Println(i, ":", s)
 	}
 }

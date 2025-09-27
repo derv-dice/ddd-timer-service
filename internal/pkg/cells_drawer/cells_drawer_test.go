@@ -11,12 +11,14 @@ import (
 )
 
 func TestCellsDrawer_NewCellsImagePNG(t *testing.T) {
+	createTmpDir()
+	defer removeTmpDir()
 
 	d := NewCellsDrawer()
 
 	user := &models.User{
-		ServeFrom: time.Date(2024, time.November, 11, 0, 0, 0, 0, time.Local),
-		ServeTo:   time.Date(2025, time.November, 10, 0, 0, 0, 0, time.Local),
+		ServeFrom: testDate1,
+		ServeTo:   testDate2,
 	}
 
 	now := time.Date(2025, time.September, 20, 0, 0, 0, 0, time.Local)
@@ -26,6 +28,6 @@ func TestCellsDrawer_NewCellsImagePNG(t *testing.T) {
 	data, err := d.NewCellsImagePNG(*stats)
 	assert.NoError(t, err)
 
-	err = os.WriteFile("test.png", data, os.ModePerm)
+	err = os.WriteFile(pathInTmpDir("test.png"), data, os.ModePerm)
 	assert.NoError(t, err)
 }

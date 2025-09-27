@@ -148,6 +148,60 @@ func (i *implTelegramBot) cellsHandler(ctx context.Context, b *bot.Bot, update *
 	})
 }
 
+func (i *implTelegramBot) calendarHandler(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
+	userID := update.Message.From.ID
+
+	img, err := i.service.GenerateCalendarPNG(ctx, userID, false)
+	if err != nil {
+		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   fmt.Sprintf("Ошибка: %s", err.Error()),
+		})
+
+		return
+	}
+
+	media := &botmodels.InputMediaPhoto{
+		Media:           "attach://ddd_calendar.png",
+		Caption:         "Посезонный календарь на весь период службы. Можешь распечатать его и отмечать дни вручную, либо вызвать команду /calendar_with_progress и получить картунку уже заполненного.",
+		MediaAttachment: bytes.NewReader(img),
+	}
+
+	_, _ = b.SendMediaGroup(ctx, &bot.SendMediaGroupParams{
+		ChatID: update.Message.Chat.ID,
+		Media: []botmodels.InputMedia{
+			media,
+		},
+	})
+}
+
+func (i *implTelegramBot) calendarWithProgressHandler(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
+	userID := update.Message.From.ID
+
+	img, err := i.service.GenerateCalendarPNG(ctx, userID, true)
+	if err != nil {
+		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   fmt.Sprintf("Ошибка: %s", err.Error()),
+		})
+
+		return
+	}
+
+	media := &botmodels.InputMediaPhoto{
+		Media:           "attach://ddd_calendar_with_progress.png",
+		Caption:         "Посезонный календарь на весь период службы с отметками о прошедших днях. Чтобы получить такой же, но без отметок, вызови команду /calendar",
+		MediaAttachment: bytes.NewReader(img),
+	}
+
+	_, _ = b.SendMediaGroup(ctx, &bot.SendMediaGroupParams{
+		ChatID: update.Message.Chat.ID,
+		Media: []botmodels.InputMedia{
+			media,
+		},
+	})
+}
+
 func (i *implTelegramBot) errorsHandler(err error) {
 	i.service.Logger().Err(err).Msg("TGBOT errorsHandler")
 }

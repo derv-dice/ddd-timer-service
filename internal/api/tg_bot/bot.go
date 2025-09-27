@@ -59,6 +59,12 @@ func (i *implTelegramBot) Start(ctx context.Context, token string) error {
 	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, "/cells", bot.MatchTypeExact,
 		i.logMiddleware(i.skipNilMessagesMiddleware(i.checkUserHasDatesMiddleware(i.cellsHandler))))
 
+	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, "/calendar", bot.MatchTypeExact,
+		i.logMiddleware(i.skipNilMessagesMiddleware(i.checkUserHasDatesMiddleware(i.calendarHandler))))
+
+	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, "/calendar_with_progress", bot.MatchTypeExact,
+		i.logMiddleware(i.skipNilMessagesMiddleware(i.checkUserHasDatesMiddleware(i.calendarWithProgressHandler))))
+
 	var newCtx context.Context
 	newCtx, i.stop = context.WithCancel(ctx)
 
