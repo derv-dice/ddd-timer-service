@@ -10,7 +10,7 @@ import (
 )
 
 func TestImplSQLiteRepository(t *testing.T) {
-	repo, err := NewSQLiteRepository("./testdata/test_db.sqlite", true)
+	repo, err := NewSQLiteRepository(context.TODO(), "./tmp/test_db.sqlite", true)
 	if err != nil {
 		t.Fatalf("NewSQLiteRepository: %v", err)
 	}

@@ -21,14 +21,13 @@ var (
 	GreenColor = color.RGBA{R: 0x95, G: 0xd1, B: 0xa9, A: 0xff}
 )
 
-type CellsDrawer struct {
-}
+type CellsDrawer struct{}
 
 func NewCellsDrawer() *CellsDrawer {
 	return &CellsDrawer{}
 }
 
-func (c *CellsDrawer) NewCellsImagePNG(stats stats_counter.Stats) ([]byte, error) {
+func (c *CellsDrawer) PNG(stats stats_counter.Stats) ([]byte, error) {
 	x1 := stats.PassedDays()
 	x2 := stats.LeftDays()
 	n := int(x1 + x2)

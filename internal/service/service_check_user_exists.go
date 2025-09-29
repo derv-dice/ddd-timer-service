@@ -4,10 +4,9 @@ import (
 	"context"
 )
 
-func (s *Service) CheckUserHasServiceDates(_ context.Context, userID int64) bool {
-	// Если нет в кэше, значит и в БД тоже не может быть.
-	u := s.usersCache.Get(userID)
-	if u == nil {
+func (s *Service) CheckUserHasServiceDates(ctx context.Context, userID int64) bool {
+	u, err := s.repo.LoadUser(ctx, userID)
+	if err != nil {
 		return false
 	}
 

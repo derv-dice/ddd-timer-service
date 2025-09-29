@@ -2,25 +2,25 @@ package service
 
 import (
 	"ddd-timer-service/config"
+	cdrawer "ddd-timer-service/internal/pkg/calendar_drawer"
 	"ddd-timer-service/internal/repository"
-	"ddd-timer-service/internal/users_cache"
 
 	"github.com/rs/zerolog"
 )
 
 type Service struct {
-	conf       config.Config
-	repo       repository.Repository
-	usersCache users_cache.UsersCache
-	logger     *zerolog.Logger
+	conf           config.Config
+	repo           repository.Repository
+	logger         *zerolog.Logger
+	calendarDrawer *cdrawer.CalendarDrawer
 }
 
-func New(repo repository.Repository, usersCache users_cache.UsersCache, conf config.Config, logger *zerolog.Logger) *Service {
+func New(repo repository.Repository, conf config.Config, logger *zerolog.Logger, cd *cdrawer.CalendarDrawer) *Service {
 	return &Service{
-		repo:       repo,
-		conf:       conf,
-		usersCache: usersCache,
-		logger:     logger,
+		repo:           repo,
+		conf:           conf,
+		logger:         logger,
+		calendarDrawer: cd,
 	}
 }
 

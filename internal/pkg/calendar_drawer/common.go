@@ -1,6 +1,7 @@
 package calendar_drawer
 
 import (
+	"ddd-timer-service/internal/pkg/img_cache"
 	_ "embed"
 	"time"
 
@@ -81,4 +82,9 @@ const (
 	fontMaskLong      = "NN"
 	fontMaskHighlight = "__"
 	fontMaskNone      = "  "
+)
+
+const (
+	imgTCalendarBySeasonsPNG img_cache.ImgT = iota + 1
+	imgTCalendarBySeasonsWithProgressPNG
 )

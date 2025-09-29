@@ -12,7 +12,10 @@ func TestYearSeasonsSet_PNG(t *testing.T) {
 	createTmpDir()
 	defer removeTmpDir()
 
-	seasons := NewCalendar(testDate1, testDate2).Seasons()
+	now := time.Now()
+
+	//seasons := NewCalendar(testDate1, testDate2).Seasons()
+	seasons := NewCalendar(now, now.AddDate(2, 0, 0)).Seasons()
 
 	imgBytes, _, err := seasons.PNG()
 	assert.NoError(t, err)

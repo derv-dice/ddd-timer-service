@@ -3,13 +3,12 @@ package service
 import (
 	"context"
 	"ddd-timer-service/models"
-	"fmt"
 )
 
-func (s *Service) GetUser(_ context.Context, userID int64) (*models.User, error) {
-	user := s.usersCache.Get(userID)
-	if user == nil {
-		return nil, fmt.Errorf("user not exist")
+func (s *Service) GetUser(ctx context.Context, userID int64) (*models.User, error) {
+	user, err := s.repo.LoadUser(ctx, userID)
+	if err != nil {
+		return nil, err
 	}
 
 	return user, nil

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"ddd-timer-service/internal/pkg/users_cache"
 	"ddd-timer-service/models"
 	"errors"
 	"os"
@@ -12,10 +13,11 @@ import (
 )
 
 type implSQLiteRepository struct {
-	db *sql.DB
+	db         *sql.DB
+	usersCache users_cache.UsersCache
 }
 
-func NewSQLiteRepository(path string, createNew bool) (Repository, error) {
+func NewSQLiteRepository(ctx context.Context, path string, createNew bool) (Repository, error) {
 	if path == "" {
 		return nil, errors.New("path can't be empty")
 	}
@@ -45,7 +47,18 @@ func NewSQLiteRepository(path string, createNew bool) (Repository, error) {
 		}
 	}
 
-	return &implSQLiteRepository{db: db}, nil
+	impl := &implSQLiteRepository{db: db}
+	users, err := impl.LoadAllUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	usersCache := users_cache.NewImplUsersCacheMem()
+	for _, user := range users {
+		usersCache.Set(user.ID, user)
+	}
+
+	return &implSQLiteRepository{db: db, usersCache: usersCache}, nil
 }
 
 func (r *implSQLiteRepository) SaveUser(ctx context.Context, user *models.User) error {
@@ -70,10 +83,16 @@ func (r *implSQLiteRepository) SaveUser(ctx context.Context, user *models.User) 
 	update set date_from=$2, date_to=$3, birth_date=$4`,
 		user.ID, serveFromUnix, serveToUnix, birthDate)
 
+	r.usersCache.Set(user.ID, user)
+
 	return err
 }
 
 func (r *implSQLiteRepository) LoadUser(ctx context.Context, userID int64) (*models.User, error) {
+	if r.usersCache.Get(userID) != nil {
+		return r.usersCache.Get(userID), nil
+	}
+
 	row := r.db.QueryRowContext(ctx, `
 	select id, date_from, date_to, birth_date
 	from users
@@ -99,11 +118,15 @@ func (r *implSQLiteRepository) LoadUser(ctx context.Context, userID int64) (*mod
 	u.ServeTo = time.Unix(serveToUnix, 0)
 	u.BirthDate = time.Unix(birthDate, 0)
 
+	r.usersCache.Set(userID, u)
+
 	return u, nil
 }
 
 func (r *implSQLiteRepository) DeleteUser(ctx context.Context, userID int64) error {
 	_, err := r.db.ExecContext(ctx, `	delete from users where id=$1`, userID)
+	r.usersCache.Remove(userID)
+
 	return err
 }
 

@@ -26,7 +26,6 @@ func (s *Service) SaveUser(ctx context.Context, tgID int64, from, to time.Time) 
 		return err
 	}
 
-	s.usersCache.Set(tgID, u)
 	s.Logger().Info().Int64("user_id", u.ID).Str("user", fmt.Sprintf("%+v", *u)).Msgf("user saved")
 
 	return nil

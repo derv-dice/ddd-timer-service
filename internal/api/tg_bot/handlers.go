@@ -32,7 +32,7 @@ func (i *implTelegramBot) startHandler(ctx context.Context, b *bot.Bot, update *
 func (i *implTelegramBot) defaultHandler(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
 	userID := update.Message.From.ID
 
-	// Более простая проверка, чем на каждое сообщени вызывать regexp
+	// Более простая проверка, чем на каждое сообщении вызывать regexp
 	if len(update.Message.Text) == regStrLen {
 		if datesRegex.MatchString(update.Message.Text) {
 			dates := strings.Split(update.Message.Text, " ")
@@ -163,7 +163,7 @@ func (i *implTelegramBot) calendarHandler(ctx context.Context, b *bot.Bot, updat
 
 	media := &botmodels.InputMediaPhoto{
 		Media:           "attach://ddd_calendar.png",
-		Caption:         "Посезонный календарь на весь период службы. Можешь распечатать его и отмечать дни вручную, либо вызвать команду /calendar_with_progress и получить картунку уже заполненного.",
+		Caption:         "Посезонный календарь на весь период службы. Можешь распечатать его и отмечать дни вручную, либо вызвать команду /calendar_with_progress и получить картинку уже заполненного календаря.",
 		MediaAttachment: bytes.NewReader(img),
 	}
 

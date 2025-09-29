@@ -7,5 +7,11 @@
   },
   "tgbot": {
     "token": ""
+  },
+  "limits": {
+    "calendar_img": {
+      "cache_size_mb": 30,
+      "max_years": 2
+    }
   }
 }

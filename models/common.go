@@ -14,3 +14,5 @@ const tmplUserString = `
 ID: %d
 Дата начала службы: %s
 Дата окончания службы: %s`
+
+const maxServicePeriodYears = 100 - 18

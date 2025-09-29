@@ -5,9 +5,9 @@ import (
 	"ddd-timer-service/config"
 	httpserver "ddd-timer-service/internal/api/http"
 	"ddd-timer-service/internal/api/tg_bot"
+	cdrawer "ddd-timer-service/internal/pkg/calendar_drawer"
 	"ddd-timer-service/internal/repository"
 	"ddd-timer-service/internal/service"
-	"ddd-timer-service/internal/users_cache"
 	"errors"
 	"net/http"
 	"sync"
@@ -17,40 +17,37 @@ import (
 
 func ConstructAndRun(ctx context.Context, wg *sync.WaitGroup, conf config.Config, logger *zerolog.Logger) error {
 	// Подключение к БД
-	logger.Info().Msg("init repository")
-	sqliteRepo, err := repository.NewSQLiteRepository(conf.Database.Path, true)
+	logger.Info().Msg("creating repository instance")
+	sqliteRepo, err := repository.NewSQLiteRepository(ctx, conf.Database.Path, true)
 	if err != nil {
-		logger.Err(err).Msg("init repository failed")
+		logger.Err(err).Msg("creating repository instance FAILED")
 		return err
 	}
 
-	memUsersCache := users_cache.NewImplUsersCacheMem()
+	calendarDrawer := cdrawer.NewCalendarDrawer(ctx, conf.Limits.CalendarImg.MaxYears,
+		conf.Limits.CalendarImg.CacheSizeMB)
 
-	s := service.New(sqliteRepo, memUsersCache, conf, logger)
-
-	logger.Info().Msg("loading users users_cache")
-	if err = s.StartupUsersCache(ctx); err != nil {
-		logger.Err(err).Msg("init users users_cache failed")
-	}
+	logger.Info().Msg("creating service instance")
+	s := service.New(sqliteRepo, conf, logger, calendarDrawer)
 
 	// Запуск http сервера
-	logger.Info().Msg("start http server")
+	logger.Info().Msg("starting http server")
 	httpServer := httpserver.NewImplServerGin(s)
 
 	wg.Go(func() {
 		errS := httpServer.Start(ctx, conf.Http.Addr)
 		if errS != nil {
-			logger.Err(errS).Msg("start http server failed")
+			logger.Err(errS).Msg("start http server FAILED")
 		}
 	})
 
 	wg.Go(func() {
 		<-ctx.Done()
-		logger.Info().Msg("stop http server")
+		logger.Info().Msg("stopping http server")
 
 		errS := httpServer.Stop()
 		if errS != nil && !errors.Is(errS, http.ErrServerClosed) {
-			logger.Err(errS).Msg("stop http server failed")
+			logger.Err(errS).Msg("stop http server FAILED")
 			return
 		}
 
@@ -58,24 +55,24 @@ func ConstructAndRun(ctx context.Context, wg *sync.WaitGroup, conf config.Config
 	})
 
 	// Запуск tg бота
-	logger.Info().Msg("start telegram bot")
+	logger.Info().Msg("starting telegram bot")
 	tgBot := tg_bot.NewTelegramBot(s)
 
 	wg.Go(func() {
 		errS := tgBot.Start(ctx, conf.TGBot.Token)
 		if errS != nil && !errors.Is(errS, context.Canceled) {
-			logger.Err(errS).Msg("start telegram bot failed")
+			logger.Err(errS).Msg("start telegram bot FAILED")
 			return
 		}
 	})
 
 	wg.Go(func() {
 		<-ctx.Done()
-		logger.Info().Msg("stop telegram bot")
+		logger.Info().Msg("stopping telegram bot")
 
 		errS := tgBot.Stop()
 		if errS != nil {
-			logger.Err(errS).Msg("stop telegram bot failed")
+			logger.Err(errS).Msg("stopping telegram bot FAILED")
 			return
 		}
 

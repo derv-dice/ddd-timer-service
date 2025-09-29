@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"ddd-timer-service/internal/pkg/calendar_drawer"
 	"time"
 )
 
@@ -15,9 +14,9 @@ func (s *Service) GenerateCalendarPNG(_ context.Context, userID int64, withProgr
 	var pngBytes []byte
 
 	if withProgressMarks {
-		pngBytes, _, err = calendar_drawer.NewCalendarDrawer().BySeasonsWithProgressPNG(u.ServeFrom, u.ServeTo, time.Now())
+		pngBytes, err = s.calendarDrawer.BySeasonsWithProgressPNG(userID, u.ServeFrom, u.ServeTo, time.Now(), false)
 	} else {
-		pngBytes, _, err = calendar_drawer.NewCalendarDrawer().BySeasonsPNG(u.ServeFrom, u.ServeTo)
+		pngBytes, err = s.calendarDrawer.BySeasonsPNG(userID, u.ServeFrom, u.ServeTo, false)
 	}
 
 	if err != nil {

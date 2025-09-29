@@ -5,7 +5,6 @@ import (
 	"ddd-timer-service/models"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -18,16 +17,16 @@ func TestCellsDrawer_NewCellsImagePNG(t *testing.T) {
 
 	user := &models.User{
 		ServeFrom: testDate1,
-		ServeTo:   testDate2,
+		ServeTo:   testDate1.AddDate(1, 0, 0),
 	}
 
-	now := time.Date(2025, time.September, 20, 0, 0, 0, 0, time.Local)
+	now := testDate1.AddDate(0, 5, 11)
 
 	stats, _ := stats_counter.NewStats(user, now)
 
-	data, err := d.NewCellsImagePNG(*stats)
+	data, err := d.PNG(*stats)
 	assert.NoError(t, err)
 
-	err = os.WriteFile(pathInTmpDir("test.png"), data, os.ModePerm)
+	err = os.WriteFile(pathInTmpDir("cells.png"), data, os.ModePerm)
 	assert.NoError(t, err)
 }

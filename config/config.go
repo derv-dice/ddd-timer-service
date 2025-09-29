@@ -17,6 +17,12 @@ type Config struct {
 	TGBot struct {
 		Token string `json:"token"`
 	} `json:"tgbot"`
+	Limits struct {
+		CalendarImg struct {
+			CacheSizeMB int `json:"cache_size_mb"`
+			MaxYears    int `json:"max_years"`
+		} `json:"calendar_img"`
+	} `json:"limits"`
 }
 
 func ReadConfig(path string) (*Config, error) {

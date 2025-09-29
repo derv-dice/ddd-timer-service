@@ -12,7 +12,7 @@ func (s *Service) GenerateCellsPNG(_ context.Context, userID int64) ([]byte, err
 		return nil, fmt.Errorf("failed to get user stats: %v", err)
 	}
 
-	img, err := cells_drawer.NewCellsDrawer().NewCellsImagePNG(*stats)
+	img, err := cells_drawer.NewCellsDrawer().PNG(*stats)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate cells png: %v", err)
 	}
