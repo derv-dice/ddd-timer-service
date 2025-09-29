@@ -218,8 +218,6 @@ func (m *Month) stringsOpacityMask(from, to, now time.Time) []string {
 
 				// Сегодняшний день
 				if m.Year == now.Year() && m.Num == now.Month() && d.Num == now.Day() {
-
-					fmt.Println(date.String())
 					str += fmt.Sprintf("%s ", fontMaskHighlight)
 					continue
 				}
