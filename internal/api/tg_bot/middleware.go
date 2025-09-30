@@ -2,25 +2,33 @@ package tg_bot
 
 import (
 	"context"
-	"errors"
+	"ddd-timer-service/internal/pkg/tracelog"
 
 	"github.com/go-telegram/bot"
 	botmodels "github.com/go-telegram/bot/models"
 )
 
-func (i *implTelegramBot) skipNilMessagesMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
+// MW = Middleware
+//
+// rootMiddleware -> traceIDMW -> accessLogMW -> skipNilMW -> handler
+func (i *implTelegramBot) rootMiddleware(next bot.HandlerFunc, pass ...bool) bot.HandlerFunc {
+	if len(pass) > 0 {
+		return i.traceIDMW(i.accessLogMW(next))
+	}
+
+	return i.traceIDMW(i.accessLogMW(i.checkUserHasDatesMW(next)))
+}
+
+func (i *implTelegramBot) traceIDMW(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, bot *bot.Bot, update *botmodels.Update) {
-		if update == nil || update.Message == nil {
-			err := errors.New("update.Message is nil")
-			i.service.Logger().Err(err).Msg("nil message is received, skip it")
-			return
-		}
+		tl, ctx := tracelog.Begin(ctx, "tgbot.root")
+		defer tl.End()
 
 		next(ctx, bot, update)
 	}
 }
 
-func (i *implTelegramBot) checkUserHasDatesMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
+func (i *implTelegramBot) checkUserHasDatesMW(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
 		// Если длина текста равна regStrLen, пропустим сообщение. Это может быть попытка регистрации
 		if len(update.Message.Text) == regStrLen {
@@ -29,15 +37,11 @@ func (i *implTelegramBot) checkUserHasDatesMiddleware(next bot.HandlerFunc) bot.
 		}
 
 		if !i.service.CheckUserHasServiceDates(ctx, update.Message.From.ID) {
-			_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+			_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID:    update.Message.Chat.ID,
 				Text:      mustRegisterMessage,
 				ParseMode: botmodels.ParseModeMarkdown,
 			})
-
-			if err != nil {
-				i.service.Logger().Err(err).Send()
-			}
 
 			return
 		}
@@ -46,18 +50,18 @@ func (i *implTelegramBot) checkUserHasDatesMiddleware(next bot.HandlerFunc) bot.
 	}
 }
 
-func (i *implTelegramBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
+func (i *implTelegramBot) accessLogMW(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
+		tl, ctx := tracelog.Begin(ctx, "tgbot.accessLog")
+		defer tl.End()
+
 		if update.Message != nil {
-			i.service.Logger().Info().
-				Int64("from", update.Message.From.ID).
-				Str("msg", update.Message.Text).
-				Msg("TGBOT Request")
+
+			tl.Trace("new message", tracelog.Int(logKeyUserID, int(update.Message.From.ID)),
+				tracelog.String(logKeyMessage, update.Message.Text))
 		} else {
-			i.service.Logger().Warn().
-				Int64("from", 0).
-				Str("msg", "nil").
-				Msg("TGBOT Request")
+			tl.Warn("non message update")
+			return
 		}
 
 		next(ctx, b, update)

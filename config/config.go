@@ -8,6 +8,7 @@ import (
 const DefaultConfigFilename = "config.json"
 
 type Config struct {
+	LogLevel string `json:"log_level"`
 	Database struct {
 		Path string `json:"path"`
 	} `json:"database"`

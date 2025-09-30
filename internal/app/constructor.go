@@ -15,12 +15,13 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func ConstructAndRun(ctx context.Context, wg *sync.WaitGroup, conf config.Config, logger *zerolog.Logger) error {
+func Run(ctx context.Context, wg *sync.WaitGroup, conf config.Config, logger *zerolog.Logger) error {
 	// Подключение к БД
 	logger.Info().Msg("creating repository instance")
+
 	sqliteRepo, err := repository.NewSQLiteRepository(ctx, conf.Database.Path, true)
 	if err != nil {
-		logger.Err(err).Msg("creating repository instance FAILED")
+		logger.Error().Err(err).Msg("repository instance failed")
 		return err
 	}
 
@@ -28,7 +29,7 @@ func ConstructAndRun(ctx context.Context, wg *sync.WaitGroup, conf config.Config
 		conf.Limits.CalendarImg.CacheSizeMB)
 
 	logger.Info().Msg("creating service instance")
-	s := service.New(sqliteRepo, conf, logger, calendarDrawer)
+	s := service.New(sqliteRepo, conf, calendarDrawer)
 
 	// Запуск http сервера
 	logger.Info().Msg("starting http server")
@@ -37,7 +38,7 @@ func ConstructAndRun(ctx context.Context, wg *sync.WaitGroup, conf config.Config
 	wg.Go(func() {
 		errS := httpServer.Start(ctx, conf.Http.Addr)
 		if errS != nil {
-			logger.Err(errS).Msg("start http server FAILED")
+			logger.Error().Err(errS).Msg("starting http server failed")
 		}
 	})
 
@@ -47,7 +48,8 @@ func ConstructAndRun(ctx context.Context, wg *sync.WaitGroup, conf config.Config
 
 		errS := httpServer.Stop()
 		if errS != nil && !errors.Is(errS, http.ErrServerClosed) {
-			logger.Err(errS).Msg("stop http server FAILED")
+			logger.Error().Err(errS).Msg("stopping http server failed")
+
 			return
 		}
 
@@ -61,7 +63,8 @@ func ConstructAndRun(ctx context.Context, wg *sync.WaitGroup, conf config.Config
 	wg.Go(func() {
 		errS := tgBot.Start(ctx, conf.TGBot.Token)
 		if errS != nil && !errors.Is(errS, context.Canceled) {
-			logger.Err(errS).Msg("start telegram bot FAILED")
+			logger.Error().Err(errS).Msg("starting telegram bot failed")
+
 			return
 		}
 	})
@@ -72,7 +75,8 @@ func ConstructAndRun(ctx context.Context, wg *sync.WaitGroup, conf config.Config
 
 		errS := tgBot.Stop()
 		if errS != nil {
-			logger.Err(errS).Msg("stopping telegram bot FAILED")
+			logger.Error().Err(errS).Msg("stopping telegram bot failed")
+
 			return
 		}
 

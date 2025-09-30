@@ -5,10 +5,9 @@ import (
 	"ddd-timer-service/internal/service"
 	"ddd-timer-service/models"
 	_ "embed"
+	"io"
 
-	ginlogger "github.com/gin-contrib/logger"
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog"
 )
 
 type Server interface {
@@ -44,6 +43,7 @@ func (i *implServerGin) Stop() error {
 
 func NewImplServerGin(service *service.Service) Server {
 	gin.SetMode(gin.ReleaseMode)
+	gin.DefaultWriter = io.Discard
 
 	i := &implServerGin{
 		ok:      true,
@@ -52,10 +52,7 @@ func NewImplServerGin(service *service.Service) Server {
 
 	e := gin.New()
 
-	e.Use(ginlogger.SetLogger(ginlogger.WithLogger(
-		func(c *gin.Context, logger zerolog.Logger) zerolog.Logger {
-			return service.Logger().With().Str("ip", c.ClientIP()).Str("user_agent", c.Request.UserAgent()).Logger()
-		})))
+	e.Use(gin.Recovery())
 
 	e.GET("/", i.rootHandler)
 	e.NoRoute(i.rootHandler)

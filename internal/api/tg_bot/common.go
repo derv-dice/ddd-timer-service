@@ -74,3 +74,9 @@ var dmbStickersFileID = []string{
 	"CAACAgIAAxkBAAOhZ_e89EwveecEqg4WM2fWbJotRnEAAmIAAx8sEgNa5pd3TtGxMDYE",
 	"CAACAgIAAxkBAAOjZ_e8-hsEtgsxq5lpbDC9UJUyEgIAAmMAAx8sEgNaLiP_dOne9zYE",
 }
+
+const (
+	logKeyUserID      = "user_id"
+	logKeyMessage     = "message_text"
+	logKeyElapsedTime = "elapsed_time"
+)

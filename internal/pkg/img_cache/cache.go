@@ -32,16 +32,16 @@ func (i *Cache) Set(userID int64, imgType ImgT, bytes []byte) {
 		i.cache[userID] = make(map[ImgT][]byte)
 	}
 
-	imgSize := len(bytes)
+	imgSizeBytes := len(bytes)
 
-	// Если картинка слишком большая и не влезает в кеш, то ничего не делаем
-	if imgSize > i.maxSizeBytes {
+	// Если картинка слишком большая и не влезает в кеш, значит не будем напрягаться впихивать невпихуемое
+	if imgSizeBytes > i.maxSizeBytes {
 		return
 	}
 
 	// Удаляем старые картинки из кеша до тех пор, пока не освободится место под новую
 	for {
-		if i.sizeBytes+imgSize > i.maxSizeBytes {
+		if i.sizeBytes+imgSizeBytes > i.maxSizeBytes {
 			i.removeLast()
 			continue
 		}
@@ -51,7 +51,7 @@ func (i *Cache) Set(userID int64, imgType ImgT, bytes []byte) {
 
 	i.cache[userID][imgType] = bytes
 	i.pq.push(i.pq.encodeKey(userID, imgType))
-	i.sizeBytes += imgSize
+	i.sizeBytes += imgSizeBytes
 }
 
 func (i *Cache) Get(userID int64, imgType ImgT) []byte {

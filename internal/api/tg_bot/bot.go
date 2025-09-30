@@ -33,7 +33,8 @@ func (i *implTelegramBot) Start(ctx context.Context, token string) error {
 	// Бот при создании уже начинает слать запросы в Telegram API,
 	// поэтому этот код расположен здесь, а не в функции NewTelegramBot()
 	options := []bot.Option{
-		bot.WithDefaultHandler(i.logMiddleware(i.skipNilMessagesMiddleware(i.checkUserHasDatesMiddleware(i.defaultHandler)))),
+		bot.WithDefaultHandler(i.rootMiddleware(i.defaultHandler, true)),
+
 		bot.WithErrorsHandler(i.errorsHandler),
 		bot.WithDebugHandler(i.debugHandler),
 	}
@@ -45,25 +46,25 @@ func (i *implTelegramBot) Start(ctx context.Context, token string) error {
 	}
 
 	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypeExact,
-		i.logMiddleware(i.skipNilMessagesMiddleware(i.startHandler)))
+		i.rootMiddleware(i.startHandler, true))
 
 	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, "/help", bot.MatchTypeExact,
-		i.logMiddleware(i.skipNilMessagesMiddleware(i.checkUserHasDatesMiddleware(i.helpHandler))))
+		i.rootMiddleware(i.helpHandler))
 
 	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, "/stats", bot.MatchTypeExact,
-		i.logMiddleware(i.skipNilMessagesMiddleware(i.checkUserHasDatesMiddleware(i.statsHandler))))
+		i.rootMiddleware(i.statsHandler))
 
 	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, "/user_info", bot.MatchTypeExact,
-		i.logMiddleware(i.skipNilMessagesMiddleware(i.checkUserHasDatesMiddleware(i.getUserInfo))))
+		i.rootMiddleware(i.getUserInfo))
 
 	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, "/cells", bot.MatchTypeExact,
-		i.logMiddleware(i.skipNilMessagesMiddleware(i.checkUserHasDatesMiddleware(i.cellsHandler))))
+		i.rootMiddleware(i.cellsHandler))
 
 	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, "/calendar", bot.MatchTypeExact,
-		i.logMiddleware(i.skipNilMessagesMiddleware(i.checkUserHasDatesMiddleware(i.calendarHandler))))
+		i.rootMiddleware(i.calendarHandler))
 
 	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, "/calendar_with_progress", bot.MatchTypeExact,
-		i.logMiddleware(i.skipNilMessagesMiddleware(i.checkUserHasDatesMiddleware(i.calendarWithProgressHandler))))
+		i.rootMiddleware(i.calendarWithProgressHandler))
 
 	var newCtx context.Context
 	newCtx, i.stop = context.WithCancel(ctx)

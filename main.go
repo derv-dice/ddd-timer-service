@@ -4,12 +4,15 @@ import (
 	"context"
 	"ddd-timer-service/config"
 	"ddd-timer-service/internal/app"
+	"ddd-timer-service/internal/pkg/tracelog"
+	"ddd-timer-service/internal/pkg/tracelog/exporters"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/otel"
 )
 
 func main() {
@@ -24,10 +27,21 @@ func main() {
 		logger.Fatal().Err(err).Msg("reading config failed")
 	}
 
+	level, err := zerolog.ParseLevel(conf.LogLevel)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("parsing log_level failed")
+	}
+	
+	zerolog.SetGlobalLevel(level)
+
+	tp, _ := exporters.ExporterDevNull()
+	tracelog.SetLogger(logger)
+	otel.SetTracerProvider(tp)
+
 	wg := new(sync.WaitGroup)
 
 	logger.Info().Msg("running service")
-	err = app.ConstructAndRun(ctx, wg, *conf, &logger)
+	err = app.Run(ctx, wg, *conf, &logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("run application failed")
 	}

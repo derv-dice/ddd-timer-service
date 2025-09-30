@@ -3,6 +3,7 @@ package calendar_drawer
 import (
 	"context"
 	"ddd-timer-service/internal/pkg/img_cache"
+	"ddd-timer-service/internal/pkg/tracelog"
 	_ "embed"
 	"fmt"
 	"time"
@@ -23,12 +24,15 @@ func NewCalendarDrawer(ctx context.Context, maxYears, maxCacheSizeMB int) *Calen
 		cache:    cache,
 	}
 
-	go c.runCacheCleaner(ctx)
+	go c.backgroundCacheCleaner(ctx)
 
 	return c
 }
 
-func (c *CalendarDrawer) BySeasonsPNG(userID int64, from, to time.Time, disableLimits bool) ([]byte, error) {
+func (c *CalendarDrawer) BySeasonsPNG(ctx context.Context, userID int64, from, to time.Time, disableLimits bool) ([]byte, error) {
+	tl, ctx := tracelog.Begin(ctx, "calendarDrawer/BySeasonsPNG")
+	defer tl.End()
+
 	seasons := NewCalendar(from, to).Seasons()
 
 	if !disableLimits {
@@ -39,9 +43,11 @@ func (c *CalendarDrawer) BySeasonsPNG(userID int64, from, to time.Time, disableL
 
 	cachedImgBytes := c.cache.Get(userID, imgTCalendarBySeasonsPNG)
 	if cachedImgBytes != nil {
+		tl.Info("calendar_drawer cache hit")
 		return cachedImgBytes, nil
 	}
 
+	tl.Info("calendar_drawer cache miss")
 	imgBytes, _, err := seasons.PNG()
 	if err != nil {
 		return nil, err
@@ -52,7 +58,10 @@ func (c *CalendarDrawer) BySeasonsPNG(userID int64, from, to time.Time, disableL
 	return imgBytes, nil
 }
 
-func (c *CalendarDrawer) BySeasonsWithProgressPNG(userID int64, from, to, now time.Time, disableLimits bool) ([]byte, error) {
+func (c *CalendarDrawer) BySeasonsWithProgressPNG(ctx context.Context, userID int64, from, to, now time.Time, disableLimits bool) ([]byte, error) {
+	tl, ctx := tracelog.Begin(ctx, "calendarDrawer/BySeasonsWithProgressPNG")
+	defer tl.End()
+
 	seasons := NewCalendar(from, to).Seasons()
 
 	if !disableLimits {
@@ -63,9 +72,11 @@ func (c *CalendarDrawer) BySeasonsWithProgressPNG(userID int64, from, to, now ti
 
 	cachedImgBytes := c.cache.Get(userID, imgTCalendarBySeasonsWithProgressPNG)
 	if cachedImgBytes != nil {
+		tl.Info("calendar_drawer cache hit")
 		return cachedImgBytes, nil
 	}
 
+	tl.Info("calendar_drawer cache miss")
 	imgBytes, _, err := seasons.PNGWithProgressMask(from, to, now)
 	if err != nil {
 		return nil, err
@@ -76,8 +87,11 @@ func (c *CalendarDrawer) BySeasonsWithProgressPNG(userID int64, from, to, now ti
 	return imgBytes, nil
 }
 
-// runCacheCleaner - очистка кеша раз в сутки в 00:00
-func (c *CalendarDrawer) runCacheCleaner(ctx context.Context) {
+// backgroundCacheCleaner - очистка кеша раз в сутки в 00:00
+func (c *CalendarDrawer) backgroundCacheCleaner(ctx context.Context) {
+	tl, ctx := tracelog.Begin(ctx, "calendarDrawer/backgroundCacheCleaner")
+	defer tl.End()
+
 	for {
 		now := time.Now()
 
@@ -86,11 +100,14 @@ func (c *CalendarDrawer) runCacheCleaner(ctx context.Context) {
 			next = next.Add(24 * time.Hour)
 		}
 
+		tl.Info(fmt.Sprintf("next cleaning starts at %s", next.Format(time.DateTime)))
+
 		timer := time.NewTimer(next.Sub(now))
 
 		select {
 		case <-timer.C:
 			c.cache.Clear()
+			tl.Info("cache is cleaned")
 
 		case <-ctx.Done():
 			timer.Stop()
