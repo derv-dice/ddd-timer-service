@@ -216,7 +216,11 @@ func (i *implTelegramBot) calendarHandler(ctx context.Context, b *bot.Bot, updat
 }
 
 func (i *implTelegramBot) calendarWithProgressHandler(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
+	tl, ctx := tracelog.Begin(ctx, "tgbot/calendarWithProgressHandler")
+	defer tl.End()
+
 	userID := update.Message.From.ID
+	tl.AddAttributes(tracelog.Int(logKeyUserID, int(userID)))
 
 	img, err := i.service.GenerateCalendarPNG(ctx, userID, true)
 	if err != nil {
