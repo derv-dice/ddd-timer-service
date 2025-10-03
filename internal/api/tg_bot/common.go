@@ -1,6 +1,13 @@
 package tg_bot
 
-import "regexp"
+import (
+	"ddd-timer-service/models"
+	"errors"
+	"regexp"
+	"time"
+
+	botmodels "github.com/go-telegram/bot/models"
+)
 
 const regStrLen = 21
 
@@ -77,6 +84,46 @@ var dmbStickersFileID = []string{
 
 const (
 	logKeyUserID      = "user_id"
+	logKeyChatID      = "chat_id"
 	logKeyMessage     = "message_text"
 	logKeyElapsedTime = "elapsed_time"
 )
+
+const (
+	patternStart                = "/start"
+	patternHelp                 = "/help"
+	patternStats                = "/stats"
+	patternUserInfo             = "/user_info"
+	patternCells                = "/cells"
+	patternCalendar             = "/calendar"
+	patternCalendarWithProgress = "/calendar_with_progress"
+)
+
+// Сокращения
+const (
+	pmNone = botmodels.ParseMode("")
+	pmHTML = botmodels.ParseModeHTML
+	pmMDv1 = botmodels.ParseModeMarkdownV1
+	pmMDv2 = botmodels.ParseModeMarkdown
+)
+
+var (
+	ErrInvalidDateFormat = errors.New("invalid date format")
+	ErrBadDates          = errors.New("'from' must be before 'to'")
+)
+
+func stringDatesToTime(dateStr1, dateStr2 string) (date1 time.Time, date2 time.Time, err error) {
+	date1, err = time.Parse(models.OnlyDateLayout, dateStr1)
+	if err != nil {
+		err = ErrInvalidDateFormat
+		return
+	}
+
+	date2, err = time.Parse(models.OnlyDateLayout, dateStr2)
+	if err != nil {
+		err = ErrInvalidDateFormat
+		return
+	}
+
+	return
+}

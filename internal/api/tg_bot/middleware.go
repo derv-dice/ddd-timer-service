@@ -8,27 +8,31 @@ import (
 	botmodels "github.com/go-telegram/bot/models"
 )
 
-// MW = Middleware
-//
-// rootMiddleware -> traceIDMW -> accessLogMW -> skipNilMW -> handler
-func (i *implTelegramBot) rootMiddleware(next bot.HandlerFunc, pass ...bool) bot.HandlerFunc {
-	if len(pass) > 0 {
-		return i.traceIDMW(i.accessLogMW(next))
-	}
-
-	return i.traceIDMW(i.accessLogMW(i.checkUserHasDatesMW(next)))
-}
-
-func (i *implTelegramBot) traceIDMW(next bot.HandlerFunc) bot.HandlerFunc {
-	return func(ctx context.Context, bot *bot.Bot, update *botmodels.Update) {
-		tl, ctx := tracelog.Begin(ctx, "tgbot.root")
+func (i *implTelegramBot) accessLogMW(next bot.HandlerFunc) bot.HandlerFunc {
+	return func(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
+		tl, ctx := tracelog.Begin(ctx, "TGBOT")
 		defer tl.End()
 
-		next(ctx, bot, update)
+		var msg string
+
+		if update.Message != nil {
+
+			msg = update.Message.Text
+
+			tl.AddAttributes(tracelog.Int(logKeyUserID, int(update.Message.From.ID)),
+				tracelog.Int(logKeyChatID, int(update.Message.Chat.ID)))
+
+		} else {
+			tl.Warn("nil message update")
+			return
+		}
+
+		next(ctx, b, update)
+		tl.InfoWithDuration("message processed", tracelog.String(logKeyMessage, msg))
 	}
 }
 
-func (i *implTelegramBot) checkUserHasDatesMW(next bot.HandlerFunc) bot.HandlerFunc {
+func (i *implTelegramBot) filterMW(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
 		// Если длина текста равна regStrLen, пропустим сообщение. Это может быть попытка регистрации
 		if len(update.Message.Text) == regStrLen {
@@ -36,34 +40,29 @@ func (i *implTelegramBot) checkUserHasDatesMW(next bot.HandlerFunc) bot.HandlerF
 			return
 		}
 
-		if !i.service.CheckUserHasServiceDates(ctx, update.Message.From.ID) {
-			_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID:    update.Message.Chat.ID,
-				Text:      mustRegisterMessage,
-				ParseMode: botmodels.ParseModeMarkdown,
-			})
+		// Проверка, что пользователь зарегистрирован
+		if update.Message != nil && filterCheckUserHasServiceDates[update.Message.Text] {
+			if !i.service.CheckUserHasServiceDates(ctx, update.Message.From.ID) {
+				_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+					ChatID:    update.Message.Chat.ID,
+					Text:      mustRegisterMessage,
+					ParseMode: botmodels.ParseModeMarkdown,
+				})
 
-			return
+				return
+			}
 		}
 
 		next(ctx, b, update)
 	}
 }
 
-func (i *implTelegramBot) accessLogMW(next bot.HandlerFunc) bot.HandlerFunc {
-	return func(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
-		tl, ctx := tracelog.Begin(ctx, "tgbot.accessLog")
-		defer tl.End()
-
-		if update.Message != nil {
-
-			tl.Trace("new message", tracelog.Int(logKeyUserID, int(update.Message.From.ID)),
-				tracelog.String(logKeyMessage, update.Message.Text))
-		} else {
-			tl.Warn("non message update")
-			return
-		}
-
-		next(ctx, b, update)
-	}
+var filterCheckUserHasServiceDates = map[string]bool{
+	patternStart:                true,
+	patternHelp:                 false,
+	patternStats:                false,
+	patternUserInfo:             false,
+	patternCells:                false,
+	patternCalendar:             false,
+	patternCalendarWithProgress: false,
 }

@@ -2,13 +2,14 @@ package http
 
 import (
 	"ddd-timer-service/internal/pkg/stats_counter"
+	"ddd-timer-service/internal/pkg/tracelog"
 	"ddd-timer-service/models"
 	_ "embed"
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 )
 
 //go:embed src/index.html
@@ -21,32 +22,47 @@ func (i *implServerGin) rootHandler(c *gin.Context) {
 }
 
 func (i *implServerGin) statsHandler(c *gin.Context) {
+	tl, _ := tracelog.Begin(c.Request.Context(), "HTTP/statsHandler")
+	defer tl.End()
+
 	from := c.Query("from")
 	to := c.Query("to")
 
 	fromDate, err := time.Parse(time.DateOnly, from)
 	if err != nil {
+		err = ErrInvalidDateFormat
+
 		_ = c.AbortWithError(http.StatusBadRequest, err)
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "invalid date format",
+			messageJsonKey: err.Error(),
 		})
+
+		tl.AddError(err, zerolog.WarnLevel)
 		return
 	}
 
 	toDate, err := time.Parse(time.DateOnly, to)
 	if err != nil {
+		err = ErrInvalidDateFormat
+
 		_ = c.AbortWithError(http.StatusBadRequest, err)
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "invalid date format",
+			messageJsonKey: err.Error(),
 		})
+
+		tl.AddError(err, zerolog.WarnLevel)
 		return
 	}
 
-	if !fromDate.Before(toDate) {
-		_ = c.AbortWithError(http.StatusBadRequest, fmt.Errorf("fromDate must be before toDate"))
+	if !fromDate.Before(toDate) || fromDate.Round(time.Hour*24).Equal(toDate.Round(time.Hour*24)) {
+		err = ErrBadDates
+
+		_ = c.AbortWithError(http.StatusBadRequest, err)
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "invalid date format",
+			messageJsonKey: err.Error(),
 		})
+
+		tl.AddError(err, zerolog.WarnLevel)
 		return
 	}
 
@@ -55,10 +71,11 @@ func (i *implServerGin) statsHandler(c *gin.Context) {
 		ServeTo:   toDate,
 	}
 
-	stats, err := stats_counter.NewStats(user, time.Now())
-	if err != nil {
-		_ = c.AbortWithError(http.StatusInternalServerError, err)
-	}
+	// Валидации для дат есть выше, поэтому ошибки здесь не будет
+	stats, _ := stats_counter.NewStats(user, tl.StartedAt())
 
 	c.JSON(200, stats.PrettyShort())
+
+	tl.InfoWithDuration("stats generated", tracelog.String("date_from", fromDate.String()),
+		tracelog.String("date_to", toDate.String()))
 }

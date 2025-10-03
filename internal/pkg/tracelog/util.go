@@ -14,6 +14,20 @@ func (t *TraceLogger) Info(eventName string, attributes ...KeyValue) {
 	t.AddEvent(eventName, zerolog.InfoLevel, attributes...)
 }
 
+func (t *TraceLogger) InfoWithDuration(eventName string, attributes ...KeyValue) {
+	if attributes == nil {
+		attributes = []KeyValue{
+			String(spanTimeElapsedLogKey, t.Duration().String()),
+		}
+
+		t.AddEvent(eventName, zerolog.InfoLevel, attributes...)
+		return
+	}
+
+	attributes = append(attributes, String(spanTimeElapsedLogKey, t.Duration().String()))
+	t.AddEvent(eventName, zerolog.InfoLevel, attributes...)
+}
+
 func (t *TraceLogger) Warn(eventName string, attributes ...KeyValue) {
 	t.AddEvent(eventName, zerolog.WarnLevel, attributes...)
 }

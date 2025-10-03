@@ -1,249 +1,266 @@
 package tg_bot
 
 import (
-	"bytes"
 	"context"
 	"ddd-timer-service/internal/pkg/tracelog"
 	"fmt"
 	"math"
 	"strings"
+	"time"
 
 	"github.com/go-telegram/bot"
 	botmodels "github.com/go-telegram/bot/models"
+	"github.com/rs/zerolog"
 )
 
-func (i *implTelegramBot) startHandler(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
-	tl, ctx := tracelog.Begin(ctx, "tgbot/startHandler")
+func (i *implTelegramBot) startHandler(ctx context.Context, _ *bot.Bot, update *botmodels.Update) {
+	tl, ctx := tracelog.Begin(ctx, "TGBOT/startHandler")
 	defer tl.End()
 
 	userID := update.Message.From.ID
-	tl.AddAttributes(tracelog.Int(logKeyUserID, int(userID)))
+	chatID := update.Message.Chat.ID
 
-	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		Text:      fmt.Sprintf("Привет, *%s*", bot.EscapeMarkdown(update.Message.From.FirstName)),
-		ParseMode: botmodels.ParseModeMarkdown,
-	})
+	if err := i.SendMessage(ctx, chatID, pmMDv2, newHelloMessage(update.Message.From.FirstName)); err != nil {
+		tl.AddError(err)
+		return
+	}
 
 	if !i.service.CheckUserHasServiceDates(ctx, userID) {
-		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:    update.Message.Chat.ID,
-			Text:      mustRegisterMessage,
-			ParseMode: botmodels.ParseModeMarkdownV1,
-		})
+		if err := i.SendMessage(ctx, chatID, pmMDv1, mustRegisterMessage); err != nil {
+			tl.AddError(err)
+			return
+		}
+
+		tl.InfoWithDuration("user without service dates")
+		return
+	}
+
+	if err := i.SendMessage(ctx, chatID, pmMDv2, basicUsageMessage); err != nil {
+		tl.AddError(err)
+		return
 	}
 }
 
-func (i *implTelegramBot) defaultHandler(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
-	tl, ctx := tracelog.Begin(ctx, "tgbot/defaultHandler")
+func (i *implTelegramBot) defaultHandler(ctx context.Context, _ *bot.Bot, update *botmodels.Update) {
+	tl, ctx := tracelog.Begin(ctx, "TGBOT/defaultHandler")
 	defer tl.End()
 
 	userID := update.Message.From.ID
-	tl.AddAttributes(tracelog.Int(logKeyUserID, int(userID)), tracelog.String(logKeyMessage, update.Message.Text))
+	chatID := update.Message.Chat.ID
 
-	// Более простая проверка, чем на каждое сообщении вызывать regexp
-	if len(update.Message.Text) == regStrLen {
-		if datesRegex.MatchString(update.Message.Text) {
-			dates := strings.Split(update.Message.Text, " ")
-
-			if err := i.service.SetUserDatesFromStringMessage(ctx, userID, dates[0], dates[1]); err != nil {
-				_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-					ChatID: update.Message.Chat.ID,
-					Text:   fmt.Sprintf("Не удалось сохранить даты, ошибка: %s", err.Error()),
-				})
-
+	// Проверка, что пользователь зарегистрирован
+	if update.Message != nil && filterCheckUserHasServiceDates[update.Message.Text] {
+		if !i.service.CheckUserHasServiceDates(ctx, update.Message.From.ID) {
+			if err := i.SendMessage(ctx, chatID, pmMDv1, mustRegisterMessage); err != nil {
 				tl.AddError(err)
 				return
 			}
 
-			_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: update.Message.Chat.ID,
-				Text:   "Даты начала и окончания службы изменены",
-			})
-
-			tl.Info("user dates has been changed")
+			tl.InfoWithDuration("user without service dates")
+			return
 		}
 	}
 
-	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		Text:      "Чтобы узнать статистику используй команду /stats",
-		ParseMode: botmodels.ParseModeMarkdown,
-	})
+	// Проверяем, возможно пользователь хочет зарегистрироваться или поменять даты
+	if len(update.Message.Text) == regStrLen {
+		if datesRegex.MatchString(update.Message.Text) {
+			dates := strings.Split(update.Message.Text, " ")
+			from, to, err := stringDatesToTime(dates[0], dates[1])
+			if err != nil {
+				tl.AddError(err, zerolog.WarnLevel)
+				return
+			}
+
+			if !from.Before(to) || from.Round(time.Hour*24).Equal(to.Round(time.Hour*24)) {
+				err = ErrBadDates
+				tl.AddError(err, zerolog.WarnLevel)
+				return
+			}
+
+			if err = i.service.SaveUser(ctx, userID, from, to); err != nil {
+				tl.AddError(err)
+
+				if sErr := i.SendErrorMessage(ctx, chatID, err); sErr != nil {
+					tl.AddError(sErr)
+					return
+				}
+
+				return
+			}
+
+			tl.InfoWithDuration("user dates has been changed")
+
+			if sErr := i.SendMessage(ctx, chatID, pmNone, "даты начала и окончания службы успешно изменены"); sErr != nil {
+				tl.AddError(sErr)
+				return
+			}
+		}
+	}
+
+	if sErr := i.SendMessage(ctx, chatID, pmMDv2, basicUsageMessage); sErr != nil {
+		tl.AddError(sErr)
+		return
+	}
 }
 
-func (i *implTelegramBot) statsHandler(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
-	tl, ctx := tracelog.Begin(ctx, "tgbot/statsHandler")
+func (i *implTelegramBot) statsHandler(ctx context.Context, _ *bot.Bot, update *botmodels.Update) {
+	tl, ctx := tracelog.Begin(ctx, "TGBOT/statsHandler")
 	defer tl.End()
 
 	userID := update.Message.From.ID
-	tl.AddAttributes(tracelog.Int(logKeyUserID, int(userID)))
+	chatID := update.Message.Chat.ID
 
 	s, err := i.service.GetUserStats(ctx, userID)
 	if err != nil {
-		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: userID,
-			Text:   fmt.Sprintf("Ошибка: %s", err.Error()),
-		})
-
 		tl.AddError(err)
+
+		if sErr := i.SendErrorMessage(ctx, chatID, err); sErr != nil {
+			tl.AddError(sErr)
+			return
+		}
+
 		return
 	}
 
-	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: userID,
-		Text:   s.PrettyShort(),
-	})
+	if sErr := i.SendMessage(ctx, chatID, pmNone, s.PrettyShort()); sErr != nil {
+		tl.AddError(sErr)
+		return
+	}
 }
 
-func (i *implTelegramBot) getUserInfo(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
-	tl, ctx := tracelog.Begin(ctx, "tgbot/getUserInfo")
+func (i *implTelegramBot) getUserInfo(ctx context.Context, _ *bot.Bot, update *botmodels.Update) {
+	tl, ctx := tracelog.Begin(ctx, "TGBOT/getUserInfo")
 	defer tl.End()
 
 	userID := update.Message.From.ID
-	tl.AddAttributes(tracelog.Int(logKeyUserID, int(userID)))
+	chatID := update.Message.Chat.ID
 
 	user, err := i.service.GetUser(ctx, userID)
 	if err != nil {
-		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   fmt.Sprintf("Ошибка: %s", err.Error()),
-		})
-
 		tl.AddError(err)
+
+		if sErr := i.SendErrorMessage(ctx, chatID, err); sErr != nil {
+			tl.AddError(sErr)
+			return
+		}
+
 		return
 	}
 
-	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   user.String(),
-	})
+	if sErr := i.SendMessage(ctx, chatID, pmNone, user.String()); sErr != nil {
+		tl.AddError(sErr)
+		return
+	}
 }
 
-func (i *implTelegramBot) helpHandler(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
-	tl, ctx := tracelog.Begin(ctx, "tgbot/helpHandler")
+func (i *implTelegramBot) helpHandler(ctx context.Context, _ *bot.Bot, update *botmodels.Update) {
+	tl, ctx := tracelog.Begin(ctx, "TGBOT/helpHandler")
+	defer tl.End()
+
+	chatID := update.Message.Chat.ID
+
+	if sErr := i.SendMessage(ctx, chatID, pmMDv2, helpMessage); sErr != nil {
+		tl.AddError(sErr)
+		return
+	}
+}
+
+func (i *implTelegramBot) cellsHandler(ctx context.Context, _ *bot.Bot, update *botmodels.Update) {
+	tl, ctx := tracelog.Begin(ctx, "TGBOT/cellsHandler")
 	defer tl.End()
 
 	userID := update.Message.From.ID
-	tl.AddAttributes(tracelog.Int(logKeyUserID, int(userID)))
+	chatID := update.Message.Chat.ID
 
-	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		Text:      helpMessage1,
-		ParseMode: botmodels.ParseModeMarkdown,
-	})
+	stats, err := i.service.GetUserStats(ctx, userID)
+	if err != nil {
+		tl.AddError(err)
 
-	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   helpMessage,
-	})
-}
+		if sErr := i.SendErrorMessage(ctx, chatID, err); sErr != nil {
+			tl.AddError(sErr)
+			return
+		}
 
-func (i *implTelegramBot) cellsHandler(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
-	tl, ctx := tracelog.Begin(ctx, "tgbot/cellsHandler")
-	defer tl.End()
-
-	userID := update.Message.From.ID
-	tl.AddAttributes(tracelog.Int(logKeyUserID, int(userID)))
+		return
+	}
 
 	img, err := i.service.GenerateCellsPNG(ctx, userID)
 	if err != nil {
-		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   fmt.Sprintf("Ошибка: %s", err.Error()),
-		})
-
 		tl.AddError(err)
+
+		if sErr := i.SendErrorMessage(ctx, chatID, err); sErr != nil {
+			tl.AddError(sErr)
+			return
+		}
+
 		return
 	}
 
-	stats, err := i.service.GetUserStats(context.Background(), userID)
-	if err != nil {
-		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   fmt.Sprintf("Ошибка: %s", err.Error()),
-		})
+	caption := fmt.Sprintf("Дней прошло %d из %d, сталось: %d", int(math.Floor(stats.PassedDays())),
+		stats.TotalDays(), int(math.Ceil(stats.LeftDays())))
 
-		tl.AddError(err)
+	name := fmt.Sprintf("cells_%s", time.Now().Format("2006-01-02"))
+
+	if sErr := i.SendImagePNG(ctx, chatID, name, caption, img); sErr != nil {
+		tl.AddError(sErr)
 		return
 	}
-
-	media := &botmodels.InputMediaPhoto{
-		Media: "attach://cells.png",
-		Caption: fmt.Sprintf("Дней прошло %d из %d, сталось: %d",
-			int(math.Floor(stats.PassedDays())), stats.TotalDays(), int(math.Ceil(stats.LeftDays()))),
-		MediaAttachment: bytes.NewReader(img),
-	}
-
-	_, _ = b.SendMediaGroup(ctx, &bot.SendMediaGroupParams{
-		ChatID: update.Message.Chat.ID,
-		Media: []botmodels.InputMedia{
-			media,
-		},
-	})
 }
 
-func (i *implTelegramBot) calendarHandler(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
-	tl, ctx := tracelog.Begin(ctx, "tgbot/calendarHandler")
+func (i *implTelegramBot) calendarHandler(ctx context.Context, _ *bot.Bot, update *botmodels.Update) {
+	tl, ctx := tracelog.Begin(ctx, "TGBOT/calendarHandler")
 	defer tl.End()
 
 	userID := update.Message.From.ID
-	tl.AddAttributes(tracelog.Int(logKeyUserID, int(userID)))
+	chatID := update.Message.Chat.ID
 
 	img, err := i.service.GenerateCalendarPNG(ctx, userID, false)
 	if err != nil {
-		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   fmt.Sprintf("Ошибка: %s", err.Error()),
-		})
-
 		tl.AddError(err)
+
+		if sErr := i.SendErrorMessage(ctx, chatID, err); sErr != nil {
+			tl.AddError(sErr)
+			return
+		}
+
 		return
 	}
 
-	media := &botmodels.InputMediaPhoto{
-		Media:           "attach://ddd_calendar.png",
-		Caption:         "Посезонный календарь на весь период службы. Можешь распечатать его и отмечать дни вручную, либо вызвать команду /calendar_with_progress и получить картинку уже заполненного календаря.",
-		MediaAttachment: bytes.NewReader(img),
-	}
+	caption := captionCalendar
+	name := fmt.Sprintf("calendar_%s", time.Now().Format("2006-01-02"))
 
-	_, _ = b.SendMediaGroup(ctx, &bot.SendMediaGroupParams{
-		ChatID: update.Message.Chat.ID,
-		Media: []botmodels.InputMedia{
-			media,
-		},
-	})
+	if sErr := i.SendImagePNG(ctx, chatID, name, caption, img); sErr != nil {
+		tl.AddError(sErr)
+		return
+	}
 }
 
-func (i *implTelegramBot) calendarWithProgressHandler(ctx context.Context, b *bot.Bot, update *botmodels.Update) {
-	tl, ctx := tracelog.Begin(ctx, "tgbot/calendarWithProgressHandler")
+func (i *implTelegramBot) calendarWithProgressHandler(ctx context.Context, _ *bot.Bot, update *botmodels.Update) {
+	tl, ctx := tracelog.Begin(ctx, "TGBOT/calendarWithProgressHandler")
 	defer tl.End()
 
 	userID := update.Message.From.ID
-	tl.AddAttributes(tracelog.Int(logKeyUserID, int(userID)))
+	chatID := update.Message.Chat.ID
 
 	img, err := i.service.GenerateCalendarPNG(ctx, userID, true)
 	if err != nil {
-		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   fmt.Sprintf("Ошибка: %s", err.Error()),
-		})
+		tl.AddError(err)
+
+		if sErr := i.SendErrorMessage(ctx, chatID, err); sErr != nil {
+			tl.AddError(sErr)
+			return
+		}
 
 		return
 	}
 
-	media := &botmodels.InputMediaPhoto{
-		Media:           "attach://ddd_calendar_with_progress.png",
-		Caption:         "Посезонный календарь на весь период службы с отметками о прошедших днях. Чтобы получить такой же, но без отметок, вызови команду /calendar",
-		MediaAttachment: bytes.NewReader(img),
-	}
+	caption := captionCalendarWithProgress
+	name := fmt.Sprintf("calendar_with_progress_%s", time.Now().Format("2006-01-02"))
 
-	_, _ = b.SendMediaGroup(ctx, &bot.SendMediaGroupParams{
-		ChatID: update.Message.Chat.ID,
-		Media: []botmodels.InputMedia{
-			media,
-		},
-	})
+	if sErr := i.SendImagePNG(ctx, chatID, name, caption, img); sErr != nil {
+		tl.AddError(sErr)
+		return
+	}
 }
 
 // errorsHandler - заглушка для bot.ErrorsHandler
@@ -252,13 +269,13 @@ func (i *implTelegramBot) errorsHandler(err error) {
 		return
 	}
 
-	tl, _ := tracelog.Begin(context.Background(), "tgbot.errorsHandler")
+	tl, _ := tracelog.Begin(context.Background(), "TGBOT/errorsHandler")
 	tl.AddError(err)
 	tl.End()
 }
 
 // debugHandler - заглушка для bot.DebugHandler
 func (i *implTelegramBot) debugHandler(_ string, _ ...any) {
-	tl, _ := tracelog.Begin(context.Background(), "tgbot.debugHandler")
+	tl, _ := tracelog.Begin(context.Background(), "TGBOT/debugHandler")
 	tl.End()
 }

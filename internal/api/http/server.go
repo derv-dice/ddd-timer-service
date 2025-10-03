@@ -53,6 +53,7 @@ func NewImplServerGin(service *service.Service) Server {
 	e := gin.New()
 
 	e.Use(gin.Recovery())
+	e.Use(accessLogMW())
 
 	e.GET("/", i.rootHandler)
 	e.NoRoute(i.rootHandler)

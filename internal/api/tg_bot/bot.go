@@ -33,10 +33,9 @@ func (i *implTelegramBot) Start(ctx context.Context, token string) error {
 	// Бот при создании уже начинает слать запросы в Telegram API,
 	// поэтому этот код расположен здесь, а не в функции NewTelegramBot()
 	options := []bot.Option{
-		bot.WithDefaultHandler(i.rootMiddleware(i.defaultHandler, true)),
-
-		bot.WithErrorsHandler(i.errorsHandler),
-		bot.WithDebugHandler(i.debugHandler),
+		bot.WithDefaultHandler(i.accessLogMW(i.filterMW(i.defaultHandler))),
+		bot.WithErrorsHandler(i.errorsHandler), // Просто заглушки
+		bot.WithDebugHandler(i.debugHandler),   // Просто заглушки
 	}
 
 	var err error
@@ -45,26 +44,26 @@ func (i *implTelegramBot) Start(ctx context.Context, token string) error {
 		return err
 	}
 
-	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypeExact,
-		i.rootMiddleware(i.startHandler, true))
+	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, patternStart, bot.MatchTypeExact,
+		i.accessLogMW(i.filterMW(i.startHandler)))
 
-	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, "/help", bot.MatchTypeExact,
-		i.rootMiddleware(i.helpHandler))
+	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, patternHelp, bot.MatchTypeExact,
+		i.accessLogMW(i.filterMW(i.helpHandler)))
 
-	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, "/stats", bot.MatchTypeExact,
-		i.rootMiddleware(i.statsHandler))
+	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, patternStats, bot.MatchTypeExact,
+		i.accessLogMW(i.filterMW(i.statsHandler)))
 
-	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, "/user_info", bot.MatchTypeExact,
-		i.rootMiddleware(i.getUserInfo))
+	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, patternUserInfo, bot.MatchTypeExact,
+		i.accessLogMW(i.filterMW(i.getUserInfo)))
 
-	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, "/cells", bot.MatchTypeExact,
-		i.rootMiddleware(i.cellsHandler))
+	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, patternCells, bot.MatchTypeExact,
+		i.accessLogMW(i.filterMW(i.cellsHandler)))
 
-	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, "/calendar", bot.MatchTypeExact,
-		i.rootMiddleware(i.calendarHandler))
+	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, patternCalendar, bot.MatchTypeExact,
+		i.accessLogMW(i.filterMW(i.calendarHandler)))
 
-	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, "/calendar_with_progress", bot.MatchTypeExact,
-		i.rootMiddleware(i.calendarWithProgressHandler))
+	i.pkgBot.RegisterHandler(bot.HandlerTypeMessageText, patternCalendarWithProgress, bot.MatchTypeExact,
+		i.accessLogMW(i.filterMW(i.calendarWithProgressHandler)))
 
 	var newCtx context.Context
 	newCtx, i.stop = context.WithCancel(ctx)

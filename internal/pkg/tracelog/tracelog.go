@@ -20,11 +20,19 @@ func SetLogger(logger zerolog.Logger) {
 }
 
 type TraceLogger struct {
-	name    string
-	span    trace.Span
-	logger  zerolog.Logger
-	err     error
-	beginAt time.Time
+	name      string
+	span      trace.Span
+	logger    zerolog.Logger
+	err       error
+	startedAt time.Time
+}
+
+func (t *TraceLogger) StartedAt() time.Time {
+	return t.startedAt
+}
+
+func (t *TraceLogger) Duration() time.Duration {
+	return time.Since(t.startedAt)
 }
 
 func Begin(ctx context.Context, name string) (tl *TraceLogger, ctxWithTraceId context.Context) {
@@ -33,13 +41,13 @@ func Begin(ctx context.Context, name string) (tl *TraceLogger, ctxWithTraceId co
 
 	tl.AddAttributes(String(traceIDLogKey, tl.GetTraceID()), String(spanNameLogKey, tl.name))
 	tl.AddEvent("Begin span", zerolog.TraceLevel)
-	tl.beginAt = time.Now().UTC()
+	tl.startedAt = time.Now().UTC()
 
 	return tl, ctx
 }
 
 func (t *TraceLogger) End() {
-	timeElapsed := time.Since(t.beginAt).String()
+	timeElapsed := time.Since(t.startedAt).String()
 
 	if t.span == nil || !t.span.IsRecording() {
 		return

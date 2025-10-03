@@ -109,3 +109,11 @@ func (s *Stats) PrettyShort() string {
 		s.PassedHours(), s.PassedDays(), s.PassedWeeks(), s.PassedPercents(),
 		s.LeftHours(), s.LeftDays(), s.LeftWeeks(), s.LeftPercents())
 }
+
+func (s *Stats) DateFromString() string {
+	return s.startTime.String()
+}
+
+func (s *Stats) DateToString() string {
+	return s.startTime.String()
+}
