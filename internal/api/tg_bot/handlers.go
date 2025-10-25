@@ -3,6 +3,7 @@ package tg_bot
 import (
 	"context"
 	"ddd-timer-service/internal/pkg/tracelog"
+	"ddd-timer-service/models"
 	"fmt"
 	"math"
 	"strings"
@@ -77,7 +78,13 @@ func (i *implTelegramBot) defaultHandler(ctx context.Context, _ *bot.Bot, update
 				return
 			}
 
-			if err = i.service.SaveUser(ctx, userID, from, to); err != nil {
+			u := &models.User{
+				ID:       userID,
+				Username: update.Message.From.Username,
+				Name:     update.Message.From.FirstName,
+			}
+
+			if err = i.service.SaveUser(ctx, u); err != nil {
 				tl.AddError(err)
 
 				if sErr := i.SendErrorMessage(ctx, chatID, err); sErr != nil {
@@ -196,7 +203,8 @@ func (i *implTelegramBot) cellsHandler(ctx context.Context, _ *bot.Bot, update *
 		return
 	}
 
-	caption := fmt.Sprintf("Дней прошло %d из %d, сталось: %d", int(math.Floor(stats.PassedDays())),
+	const captionFormat = "Дней прошло %d из %d, осталось: %d"
+	caption := fmt.Sprintf(captionFormat, int(math.Floor(stats.PassedDays())),
 		stats.TotalDays(), int(math.Ceil(stats.LeftDays())))
 
 	name := fmt.Sprintf("cells_%s", time.Now().Format("2006-01-02"))

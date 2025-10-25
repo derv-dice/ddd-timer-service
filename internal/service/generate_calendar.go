@@ -6,7 +6,7 @@ import (
 )
 
 func (s *Service) GenerateCalendarPNG(ctx context.Context, userID int64, withProgressMarks bool) ([]byte, error) {
-	u, err := s.GetUser(context.Background(), userID)
+	u, err := s.GetUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -14,9 +14,9 @@ func (s *Service) GenerateCalendarPNG(ctx context.Context, userID int64, withPro
 	var pngBytes []byte
 
 	if withProgressMarks {
-		pngBytes, err = s.calendarDrawer.BySeasonsWithProgressPNG(ctx, userID, u.ServeFrom, u.ServeTo, time.Now(), false)
+		pngBytes, err = s.calendarDrawer.BySeasonsWithProgressPNG(u.ServeFrom, u.ServeTo, time.Now(), false)
 	} else {
-		pngBytes, err = s.calendarDrawer.BySeasonsPNG(ctx, userID, u.ServeFrom, u.ServeTo, false)
+		pngBytes, err = s.calendarDrawer.BySeasonsPNG(u.ServeFrom, u.ServeTo, false)
 	}
 
 	if err != nil {

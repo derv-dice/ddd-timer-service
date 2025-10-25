@@ -20,9 +20,9 @@ func TestImagesCache(t *testing.T) {
 	img4 := make([]byte, 100)
 	img5 := make([]byte, 101)
 
-	id1 := int64(100001)
-	id2 := int64(100002)
-	id3 := int64(100003)
+	id1 := "100001"
+	id2 := "100002"
+	id3 := "100003"
 
 	c.Set(id1, imgType1, img1)
 

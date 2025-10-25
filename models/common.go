@@ -10,9 +10,12 @@ var (
 
 const OnlyDateLayout = "02.01.2006"
 
-const tmplUserString = `
-ID: %d
-Дата начала службы: %s
-Дата окончания службы: %s`
+const (
+	tmplUserID   = "\nID: %d"
+	tmplDateFrom = "\nДата начала службы: %s"
+	tmplDateTo   = "\nДата окончания службы: %s"
+	tmplPhone    = "\nНомер телефона: %s"
+	tmplUsername = "\nИмя: %s"
+)
 
 const maxServicePeriodYears = 100 - 18

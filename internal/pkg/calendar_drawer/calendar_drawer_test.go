@@ -13,8 +13,7 @@ func Test_CalendarDrawerCaching(t *testing.T) {
 	cd := NewCalendarDrawer(context.TODO(), 2, 50)
 
 	t1 := time.Now()
-	imgBytes, err := cd.BySeasonsWithProgressPNG(10, testDate1, testDate1.AddDate(0, 0, 1),
-		time.Now(), true)
+	imgBytes, err := cd.BySeasonsWithProgressPNG(testDate1, testDate1.AddDate(0, 0, 1), time.Now(), true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,8 +23,7 @@ func Test_CalendarDrawerCaching(t *testing.T) {
 	err = os.WriteFile(pathInTmpDir("calendar.png"), imgBytes, os.ModePerm)
 	assert.NoError(t, err)
 	t2 := time.Now()
-	imgBytes2, err := cd.BySeasonsWithProgressPNG(10, testDate1, testDate1.AddDate(0, 0, 1),
-		time.Now(), true)
+	imgBytes2, err := cd.BySeasonsWithProgressPNG(testDate1, testDate1.AddDate(0, 0, 1), time.Now(), true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,8 +33,7 @@ func Test_CalendarDrawerCaching(t *testing.T) {
 	cd.cache.Clear()
 
 	t3 := time.Now()
-	imgBytes3, err := cd.BySeasonsWithProgressPNG(10, testDate1, testDate1.AddDate(0, 0, 1),
-		time.Now(), true)
+	imgBytes3, err := cd.BySeasonsWithProgressPNG(testDate1, testDate1.AddDate(0, 0, 1), time.Now(), true)
 	if err != nil {
 		t.Fatal(err)
 	}

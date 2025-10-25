@@ -84,6 +84,8 @@ const (
 	fontMaskNone      = "  "
 )
 
+const keyTimeFormat = "20060102"
+
 const (
 	imgTCalendarBySeasonsPNG img_cache.ImgT = iota + 1
 	imgTCalendarBySeasonsWithProgressPNG

@@ -77,11 +77,11 @@ func (r *implSQLiteRepository) SaveUser(ctx context.Context, user *models.User) 
 	}
 
 	_, err := r.db.ExecContext(ctx, `
-	insert into users (id, date_from, date_to, birth_date) 
-	values ($1, $2, $3, $4) 
+	insert into users (id, date_from, date_to, birth_date, name, username) 
+	values ($1, $2, $3, $4, $5, $6)
 	on conflict (id) do 
-	update set date_from=$2, date_to=$3, birth_date=$4`,
-		user.ID, serveFromUnix, serveToUnix, birthDate)
+	update set date_from=$2, date_to=$3, birth_date=$4, name=$5, username=$6`,
+		user.ID, serveFromUnix, serveToUnix, birthDate, user.Name, user.Username)
 
 	r.usersCache.Set(user.ID, user)
 
@@ -94,7 +94,12 @@ func (r *implSQLiteRepository) LoadUser(ctx context.Context, userID int64) (*mod
 	}
 
 	row := r.db.QueryRowContext(ctx, `
-	select id, date_from, date_to, birth_date
+	select id, 
+	       date_from, 
+	       date_to, 
+	       birth_date, 
+	       coalesce(name, '') as name, 
+	       coalesce(username,'') as username
 	from users
 	where id = $1`, userID)
 
@@ -109,7 +114,7 @@ func (r *implSQLiteRepository) LoadUser(ctx context.Context, userID int64) (*mod
 	serveFromUnix, serveToUnix, birthDate := int64(0), int64(0), int64(0)
 
 	u := new(models.User)
-	err := row.Scan(&u.ID, &serveFromUnix, &serveToUnix, &birthDate)
+	err := row.Scan(&u.ID, &serveFromUnix, &serveToUnix, &birthDate, &u.Name, &u.Username)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +137,12 @@ func (r *implSQLiteRepository) DeleteUser(ctx context.Context, userID int64) err
 
 func (r *implSQLiteRepository) LoadAllUsers(ctx context.Context) ([]*models.User, error) {
 	rows, err := r.db.QueryContext(ctx, `
-	select id, date_from, date_to, birth_date
+	select id, 
+	       date_from, 
+	       date_to, 
+	       birth_date, 
+	       coalesce(name, '') as name, 
+	       coalesce(username,'') as username
 	from users`)
 
 	if err != nil {
@@ -146,7 +156,7 @@ func (r *implSQLiteRepository) LoadAllUsers(ctx context.Context) ([]*models.User
 		u := new(models.User)
 		serveFromUnix, serveToUnix, birthDate := int64(0), int64(0), int64(0)
 
-		err = rows.Scan(&u.ID, &serveFromUnix, &serveToUnix, &birthDate)
+		err = rows.Scan(&u.ID, &serveFromUnix, &serveToUnix, &birthDate, &u.Name, &u.Username)
 		if err != nil {
 			return nil, err
 		}
@@ -170,5 +180,7 @@ create table users
             on conflict fail,
     date_from  INTEGER not null,
     date_to    INTEGER not null,
-    birth_date INTEGER
+    birth_date INTEGER,
+    name TEXT,
+    username TEXT
 );`

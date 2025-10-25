@@ -10,7 +10,10 @@ import (
 )
 
 func TestImplSQLiteRepository(t *testing.T) {
-	repo, err := NewSQLiteRepository(context.TODO(), "./tmp/test_db.sqlite", true)
+	createTmpDir()
+	defer removeTmpDir()
+
+	repo, err := NewSQLiteRepository(context.Background(), pathInTmpDir("test_db.sqlite"), true)
 	if err != nil {
 		t.Fatalf("NewSQLiteRepository: %v", err)
 	}
@@ -26,6 +29,8 @@ func TestImplSQLiteRepository(t *testing.T) {
 		ServeFrom: sf,
 		ServeTo:   st,
 		BirthDate: tb,
+		Name:      "+7123",
+		Username:  "nigga cat",
 	}
 
 	t.Run("SaveUser", func(t *testing.T) {

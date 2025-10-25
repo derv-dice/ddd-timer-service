@@ -29,10 +29,7 @@ func NewCalendarDrawer(ctx context.Context, maxYears, maxCacheSizeMB int) *Calen
 	return c
 }
 
-func (c *CalendarDrawer) BySeasonsPNG(ctx context.Context, userID int64, from, to time.Time, disableLimits bool) ([]byte, error) {
-	tl, ctx := tracelog.Begin(ctx, "calendarDrawer/BySeasonsPNG")
-	defer tl.End()
-
+func (c *CalendarDrawer) BySeasonsPNG(from, to time.Time, disableLimits bool) ([]byte, error) {
 	seasons := NewCalendar(from, to).Seasons()
 
 	if !disableLimits {
@@ -41,27 +38,24 @@ func (c *CalendarDrawer) BySeasonsPNG(ctx context.Context, userID int64, from, t
 		}
 	}
 
-	cachedImgBytes := c.cache.Get(userID, imgTCalendarBySeasonsPNG)
+	key := c.newUniqueKeyFromDates(from, to)
+
+	cachedImgBytes := c.cache.Get(key, imgTCalendarBySeasonsPNG)
 	if cachedImgBytes != nil {
-		tl.Info("calendar_drawer cache hit")
 		return cachedImgBytes, nil
 	}
 
-	tl.Info("calendar_drawer cache miss")
 	imgBytes, _, err := seasons.PNG()
 	if err != nil {
 		return nil, err
 	}
 
-	c.cache.Set(userID, imgTCalendarBySeasonsPNG, imgBytes)
+	c.cache.Set(key, imgTCalendarBySeasonsPNG, imgBytes)
 
 	return imgBytes, nil
 }
 
-func (c *CalendarDrawer) BySeasonsWithProgressPNG(ctx context.Context, userID int64, from, to, now time.Time, disableLimits bool) ([]byte, error) {
-	tl, ctx := tracelog.Begin(ctx, "calendarDrawer/BySeasonsWithProgressPNG")
-	defer tl.End()
-
+func (c *CalendarDrawer) BySeasonsWithProgressPNG(from, to, now time.Time, disableLimits bool) ([]byte, error) {
 	seasons := NewCalendar(from, to).Seasons()
 
 	if !disableLimits {
@@ -70,19 +64,19 @@ func (c *CalendarDrawer) BySeasonsWithProgressPNG(ctx context.Context, userID in
 		}
 	}
 
-	cachedImgBytes := c.cache.Get(userID, imgTCalendarBySeasonsWithProgressPNG)
+	key := c.newUniqueKeyFromDates(from, to)
+
+	cachedImgBytes := c.cache.Get(key, imgTCalendarBySeasonsWithProgressPNG)
 	if cachedImgBytes != nil {
-		tl.Info("calendar_drawer cache hit")
 		return cachedImgBytes, nil
 	}
 
-	tl.Info("calendar_drawer cache miss")
 	imgBytes, _, err := seasons.PNGWithProgressMask(from, to, now)
 	if err != nil {
 		return nil, err
 	}
 
-	c.cache.Set(userID, imgTCalendarBySeasonsWithProgressPNG, imgBytes)
+	c.cache.Set(key, imgTCalendarBySeasonsWithProgressPNG, imgBytes)
 
 	return imgBytes, nil
 }
@@ -122,4 +116,8 @@ func (c *CalendarDrawer) validateDates(from, to time.Time) error {
 	}
 
 	return nil
+}
+
+func (c *CalendarDrawer) newUniqueKeyFromDates(from, to time.Time) string {
+	return from.Round(time.Hour*24).Format(keyTimeFormat) + to.Round(time.Hour*24).Format(keyTimeFormat)
 }

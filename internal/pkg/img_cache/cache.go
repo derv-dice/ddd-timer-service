@@ -10,7 +10,7 @@ type Cache struct {
 
 	pq *imgQueue
 
-	cache map[int64]map[ImgT][]byte // map[userID]->map[ImageType]->[]byte
+	cache map[string]map[ImgT][]byte // map[key]->map[ImageType]->[]byte
 	mx    sync.RWMutex
 }
 
@@ -18,18 +18,18 @@ func NewCache(maxCacheSize int) *Cache {
 	c := &Cache{
 		pq:           new(imgQueue),
 		maxSizeBytes: maxCacheSize,
-		cache:        make(map[int64]map[ImgT][]byte),
+		cache:        make(map[string]map[ImgT][]byte),
 	}
 
 	return c
 }
 
-func (i *Cache) Set(userID int64, imgType ImgT, bytes []byte) {
+func (i *Cache) Set(key string, imgType ImgT, bytes []byte) {
 	i.mx.Lock()
 	defer i.mx.Unlock()
 
-	if _, ok := i.cache[userID]; !ok {
-		i.cache[userID] = make(map[ImgT][]byte)
+	if _, ok := i.cache[key]; !ok {
+		i.cache[key] = make(map[ImgT][]byte)
 	}
 
 	imgSizeBytes := len(bytes)
@@ -49,31 +49,31 @@ func (i *Cache) Set(userID int64, imgType ImgT, bytes []byte) {
 		break
 	}
 
-	i.cache[userID][imgType] = bytes
-	i.pq.push(i.pq.encodeKey(userID, imgType))
+	i.cache[key][imgType] = bytes
+	i.pq.push(i.pq.encodeKey(key, imgType))
 	i.sizeBytes += imgSizeBytes
 }
 
-func (i *Cache) Get(userID int64, imgType ImgT) []byte {
+func (i *Cache) Get(key string, imgType ImgT) []byte {
 	i.mx.RLock()
 	defer i.mx.RUnlock()
 
-	if _, ok := i.cache[userID]; !ok {
+	if _, ok := i.cache[key]; !ok {
 		return nil
 	}
 
-	if _, ok := i.cache[userID][imgType]; !ok {
+	if _, ok := i.cache[key][imgType]; !ok {
 		return nil
 	}
 
-	return i.cache[userID][imgType]
+	return i.cache[key][imgType]
 }
 
 func (i *Cache) Clear() {
 	i.mx.Lock()
 	defer i.mx.Unlock()
 
-	i.cache = make(map[int64]map[ImgT][]byte)
+	i.cache = make(map[string]map[ImgT][]byte)
 	i.sizeBytes = 0
 	i.pq.clear()
 }
@@ -87,9 +87,9 @@ func (i *Cache) removeLast() {
 		return
 	}
 
-	userID, imgType, _ := i.pq.decodeKey(lastKey)
-	imgSize := len(i.cache[userID][imgType])
+	key, imgType, _ := i.pq.decodeKey(lastKey)
+	imgSize := len(i.cache[key][imgType])
 
-	delete(i.cache[userID], imgType)
+	delete(i.cache[key], imgType)
 	i.sizeBytes -= imgSize
 }

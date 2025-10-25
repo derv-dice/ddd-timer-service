@@ -3,10 +3,9 @@ package cells_drawer
 import (
 	"ddd-timer-service/internal/pkg/stats_counter"
 	"ddd-timer-service/models"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestCellsDrawer_NewCellsImagePNG(t *testing.T) {
@@ -17,7 +16,7 @@ func TestCellsDrawer_NewCellsImagePNG(t *testing.T) {
 
 	user := &models.User{
 		ServeFrom: testDate1,
-		ServeTo:   testDate1.AddDate(1, 0, 0),
+		ServeTo:   testDate1.AddDate(1, 0, 0).AddDate(0, 0, -1),
 	}
 
 	now := testDate1.AddDate(0, 5, 11)

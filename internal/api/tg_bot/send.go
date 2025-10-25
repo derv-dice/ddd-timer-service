@@ -10,13 +10,13 @@ import (
 	botmodels "github.com/go-telegram/bot/models"
 )
 
-func (i *implTelegramBot) SendMessage(ctx context.Context, chatID int64, pm botmodels.ParseMode, message string, args ...any) error {
+func (i *implTelegramBot) SendMessage(ctx context.Context, chatID int64, pm botmodels.ParseMode, message string) error {
 	tl, ctx := tracelog.Begin(ctx, "TGBOT/SendMessage")
 	defer tl.End()
 
 	if _, err := i.pkgBot.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    chatID,
-		Text:      fmt.Sprintf(message, args...),
+		Text:      message,
 		ParseMode: pm,
 	}); err != nil {
 		tl.AddError(err)

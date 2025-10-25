@@ -17,27 +17,24 @@ type imgQueue struct {
 	size  int
 }
 
-func (q *imgQueue) encodeKey(userID int64, imgType ImgT) string {
-	return fmt.Sprintf("%d_%d", imgType, userID)
+func (q *imgQueue) encodeKey(key string, imgType ImgT) string {
+	return fmt.Sprintf("%d_%s", imgType, key)
 }
 
-func (q *imgQueue) decodeKey(key string) (int64, ImgT, error) {
+func (q *imgQueue) decodeKey(key string) (string, ImgT, error) {
 	arr := strings.Split(key, "_")
 	if len(arr) != 2 {
-		return 0, 0, fmt.Errorf("invalid key")
+		return "", 0, fmt.Errorf("invalid key")
 	}
 
 	imgType, err := strconv.ParseInt(arr[0], 10, 8)
 	if err != nil {
-		return 0, 0, err
+		return "", 0, err
 	}
 
-	userID, err := strconv.ParseInt(arr[1], 10, 64)
-	if err != nil {
-		return 0, 0, err
-	}
+	resKey := arr[1]
 
-	return userID, ImgT(imgType), nil
+	return resKey, ImgT(imgType), nil
 }
 
 func (q *imgQueue) push(key string) {

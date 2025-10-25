@@ -13,16 +13,16 @@ func TestImagesQueue(t *testing.T) {
 	key2 := "11_121287683123"
 	key3 := "9_12312315876"
 
-	userID := int64(123123123)
+	key := "123123123"
 	imgType := ImgT(10)
 
-	encodedKey := q.encodeKey(userID, imgType)
+	encodedKey := q.encodeKey(key, imgType)
 
 	assert.Equal(t, key1, encodedKey)
 
-	dUserID, dImgType, err := q.decodeKey(encodedKey)
+	dKey, dImgType, err := q.decodeKey(encodedKey)
 	assert.NoError(t, err)
-	assert.Equal(t, dUserID, userID)
+	assert.Equal(t, dKey, key)
 	assert.Equal(t, imgType, dImgType)
 
 	q.push(key1)

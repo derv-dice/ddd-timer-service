@@ -3,7 +3,6 @@ package tg_bot
 import (
 	"context"
 	"ddd-timer-service/internal/pkg/tracelog"
-
 	"github.com/go-telegram/bot"
 	botmodels "github.com/go-telegram/bot/models"
 )
@@ -52,6 +51,14 @@ func (i *implTelegramBot) filterMW(next bot.HandlerFunc) bot.HandlerFunc {
 				return
 			}
 		}
+
+		// Если у пользователя поменялись какие-то данные, обновим их у себя тоже
+		name := update.Message.From.FirstName
+		if update.Message.From.LastName != "" {
+			name += " " + update.Message.From.LastName
+		}
+
+		i.service.UpdateUserData(ctx, update.Message.From.ID, update.Message.From.Username, name)
 
 		next(ctx, b, update)
 	}

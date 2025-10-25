@@ -12,9 +12,16 @@ type User struct {
 	ServeFrom time.Time
 	ServeTo   time.Time
 	BirthDate time.Time
+
+	Name     string
+	Username string
 }
 
 func (u *User) Validate() error {
+	if u.ID == 0 {
+		return errors.New("не указан ID")
+	}
+
 	if u.ServeFrom.IsZero() {
 		return errors.New("не указана дата начала службы")
 	}
@@ -39,5 +46,23 @@ func (u *User) Validate() error {
 }
 
 func (u *User) String() string {
-	return fmt.Sprintf(tmplUserString, u.ID, u.ServeFrom.Format(OnlyDateLayout), u.ServeTo.Format(OnlyDateLayout))
+	str := fmt.Sprintf(tmplUserID, u.ID)
+
+	if u.Username != "" {
+		str += fmt.Sprintf(tmplUsername, u.Username)
+	}
+
+	if u.Name != "" {
+		str += fmt.Sprintf(tmplPhone, u.Name)
+	}
+
+	if !u.ServeFrom.IsZero() {
+		str += fmt.Sprintf(tmplDateFrom, u.ServeFrom.Format(OnlyDateLayout))
+	}
+
+	if !u.ServeTo.IsZero() {
+		str += fmt.Sprintf(tmplDateTo, u.ServeTo.Format(OnlyDateLayout))
+	}
+
+	return str
 }

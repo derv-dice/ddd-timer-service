@@ -117,11 +117,11 @@ func (t *TraceLogger) AddError(err error, logLevel ...zerolog.Level) {
 	t.err = err
 
 	if len(logLevel) > 0 {
-		t.logger.WithLevel(logLevel[0]).Msgf(err.Error())
+		t.logger.WithLevel(logLevel[0]).Msg(err.Error())
 		return
 	}
 
-	t.logger.Error().Msgf(err.Error())
+	t.logger.Error().Msg(err.Error())
 }
 
 func (t *TraceLogger) GetTraceID() (id string) {

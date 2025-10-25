@@ -16,6 +16,8 @@ const (
 	captionCalendarWithProgress = `Посезонный календарь на весь период службы с отметками о прошедших днях. Чтобы получить такой же, но без отметок, вызови команду /calendar`
 )
 
+const helloMsgTmpl = "Привет, *%s*"
+
 func newHelloMessage(firstname string) string {
-	return fmt.Sprintf("Привет, *%s*", bot.EscapeMarkdown(firstname))
+	return fmt.Sprintf(helloMsgTmpl, bot.EscapeMarkdown(firstname))
 }

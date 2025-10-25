@@ -28,9 +28,7 @@ func NewCellsDrawer() *CellsDrawer {
 }
 
 func (c *CellsDrawer) PNG(stats stats_counter.Stats) ([]byte, error) {
-	x1 := stats.PassedDays()
-	x2 := stats.LeftDays()
-	n := int(x1 + x2)
+	n := stats.TotalDays()
 
 	cellsCountY := (n / cellsCountX) + (n % cellsCountX)
 
@@ -39,7 +37,7 @@ func (c *CellsDrawer) PNG(stats stats_counter.Stats) ([]byte, error) {
 
 	img := image.NewRGBA(image.Rect(0, 0, imgSizeX, imgSizeY))
 
-	greenCellsLeft := int(x1)
+	greenCellsLeft := int(stats.PassedDays())
 
 	for yi := 0; yi < cellsCountY; yi++ {
 		fillGreenTo := 0
