@@ -48,14 +48,6 @@ func (u *User) Validate() error {
 func (u *User) String() string {
 	str := fmt.Sprintf(tmplUserID, u.ID)
 
-	if u.Username != "" {
-		str += fmt.Sprintf(tmplUsername, u.Username)
-	}
-
-	if u.Name != "" {
-		str += fmt.Sprintf(tmplPhone, u.Name)
-	}
-
 	if !u.ServeFrom.IsZero() {
 		str += fmt.Sprintf(tmplDateFrom, u.ServeFrom.Format(OnlyDateLayout))
 	}
